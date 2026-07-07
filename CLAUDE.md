@@ -71,3 +71,37 @@ carry no version tag at all). State this range, not a single version, in the
 manuscript methods. MedDRA PT->SOC mapping is not applied (MSSO-licensed, no free
 crosswalk available) -- `case_pt.csv`'s `soc` column is null; see
 `data/processed/README.md` note 2.
+
+### 2026-07-08 — Disproportionality: consensus rule and method approximations
+`scripts/05_disproportionality.py` computes ROR, PRR/chi-square, BCPNN IC, and
+MGPS-style EBGM per PT against a whole-database background (all drugs, no role
+restriction; N_total = 1,810,135 deduped non-deleted cases, 2025Q1-2026Q1).
+**Consensus signal** = ROR CI-lower>1 (a>=3) AND Evans PRR/chi2 (a>=3) AND IC025>0;
+EB05>2 is reported as a separate, stricter tier (`strict_signal`), not part of base
+consensus. All thresholds are configurable at the top of the script.
+
+Both BCPNN and MGPS are **documented approximations**, not the full published
+methods: BCPNN uses a Poisson-normal delta-method approximation to IC/IC025 (not the
+full hierarchical Bayes posterior), and MGPS/EBGM uses a single-component
+Gamma-Poisson shrinker fit by method-of-moments on this drug's own within-drug
+PT ratio distribution (not the full two-component mixture fit by EM across the
+whole multi-drug database). State both as approximations in the manuscript methods,
+not as full FDA/WHO-grade BCPNN/MGPS output.
+
+Sanity check: of the 4 known label AESIs checked, ILD and stomatitis reached
+consensus; pneumonitis and nausea did not. Both were investigated by hand (arithmetic
+confirmed correct, not a bug) and are real, expected statistical results: pneumonitis
+fails BCPNN only, because the approximate variance is dominated by a tiny expected
+count at just 6 cases (a low-count/short-window effect); nausea fails ROR itself,
+because it's reported in ~3.8% of ALL FAERS cases regardless of drug and doesn't
+separate from that background rate -- a known limitation of whole-database (vs.
+custom-comparator) designs for non-specific AEs. Report both candidly, do not adjust
+thresholds to force a match.
+
+Also note: 4 of the 8 consensus-signal PTs ("Disease progression", "Off label use",
+"No adverse event", "Prescribed underdose") are FAERS administrative/coding
+artifacts common in oncology data, not genuine adverse-event signals. They pass the
+statistical criteria as computed but should not be presented as safety signals
+without saying so -- decide explicitly (and document the decision here) whether to
+exclude them via a PT stoplist in a later phase, rather than silently dropping or
+silently keeping them.
