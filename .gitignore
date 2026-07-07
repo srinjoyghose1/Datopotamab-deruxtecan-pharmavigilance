@@ -9,8 +9,11 @@ __pycache__/
 .DS_Store
 .ipynb_checkpoints/
 
-# Raw FAERS / OpenVigil pulls: large, never commit
-data/raw/
+# Raw FAERS / OpenVigil pulls: large, never commit.
+# Ignore everything under data/raw/ except its own README (which documents
+# source/date/counts and is meant to be committed).
+data/raw/*
+!data/raw/README.md
 data/**/*.zip
 data/**/*.txt
 
