@@ -1,0 +1,6 @@
+group,n,low_n_caveat,median_days,q1_days,q3_days,weibull_shape,shape_ci_lower,shape_ci_upper,hazard_pattern
+Overall,90,False,22.0,3.0,55.75,0.6557968448313084,0.5455918262320251,0.7660018634305917,early-failure (decreasing hazard)
+ILD/pneumonitis,3,True,18.0,9.0,44.0,0.638600646821032,0.025635773994950095,1.251565519647114,consistent with random/constant hazard (CI spans 1)
+Ocular,4,True,11.5,7.5,14.25,1.1589663756179027,0.11412188899828424,2.203810862237521,consistent with random/constant hazard (CI spans 1)
+Stomatitis,8,True,14.0,3.75,33.0,0.6687457976277975,0.3267702658449957,1.0107213294105994,consistent with random/constant hazard (CI spans 1)
+Infusion-related reaction,6,True,0.0,0.0,15.75,0.4686470905907466,0.18668385563209788,0.7506103255493953,early-failure (decreasing hazard)

@@ -1,0 +1,9 @@
+outc_cod,label,n_cases,pct_of_all_cases
+DE,Death,102,24.5
+LT,Life-threatening,2,0.5
+HO,Hospitalization,69,16.6
+DS,Disability,5,1.2
+CA,Congenital anomaly,0,0.0
+RI,Required intervention,0,0.0
+OT,Other serious,109,26.2
+ANY_SERIOUS,Any serious outcome,225,54.1

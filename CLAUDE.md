@@ -105,3 +105,34 @@ statistical criteria as computed but should not be presented as safety signals
 without saying so -- decide explicitly (and document the decision here) whether to
 exclude them via a PT stoplist in a later phase, rather than silently dropping or
 silently keeping them.
+
+### 2026-07-08 — Stratification, subgroup ROR, SOC rollup, Weibull TTO
+`scripts/06_stratify_tto.py`. Key choices:
+
+- **AESI PT groupings are hand-curated against the label**, not a keyword match --
+  e.g. infectious pneumonia variants and lung-cancer/indication terms are excluded
+  from ILD/pneumonitis; "Dry mouth" is excluded from Stomatitis (different
+  mechanism, xerostomia not mucositis); "Intraocular pressure increased" is excluded
+  from Ocular (distinct glaucoma-type finding, not the corneal/surface toxicity the
+  label describes). See the AESI_GROUPS comment in the script for the full
+  rationale.
+- **Age is unknown for 220/416 cases (52.9%)** -- state this plainly whenever an age
+  band breakdown is presented; it is not a small-print caveat.
+- **Subgroup ROR concentration flags involving "Unknown" sex/age are not
+  interpretable as real demographic effects** -- with over half the cohort missing
+  age, some PT will concentrate in "Unknown" by base rate alone. The script prints
+  this caveat automatically; carry it into the manuscript rather than reporting an
+  "Unknown"-concentrated PT as if it were a real subgroup finding.
+- **TTO is computed for only 90/416 cases (21.6%)** -- 207 cases have no THER row at
+  all for this drug's own drug_seq (as opposed to a concomitant drug's), 36 more have
+  only a partial START_DT (year or year-month only, not day-level), and 149 lack
+  EVENT_DT. State this completeness rate explicitly everywhere TTO results appear;
+  do not present the Weibull fits as if computed on the full cohort.
+- **Weibull shape/CI for the 4 AESI subgroups (n=3,4,8,6) are underpowered** --
+  flagged via `low_n_caveat` in `tto_summary.csv`. Only the "Overall" TTO estimate
+  (n=90) and the Infusion-related-reaction estimate (n=6, but median=0 days matches
+  known clinical reality of immediate infusion reactions, a useful sanity check) are
+  worth citing with any confidence; the ILD/pneumonitis, Ocular, and Stomatitis
+  per-AESI Weibull fits should be reported as exploratory only.
+- SOC rollup remains a single "Unmapped" bucket (284/284 PTs) -- same MedDRA
+  licensing gap as scripts/04. No change in status.
