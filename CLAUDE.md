@@ -54,3 +54,20 @@ Kept datopotamab deruxtecan as the study drug after an iterative saturation chec
 study of the drug; nearest overlap is a 2026 class-level ADC FAERS paper that lists it in
 a roster but reports zero drug-level results for it. Re-check for saturation before
 manuscript submission given how fast this literature is moving.
+
+### 2026-07-08 — Dedup rule and MedDRA version
+FDA-standard dedup applied in `scripts/04_clean_dedup.py`: within duplicate CASEIDs,
+keep the record with the latest FDA_DT, tie-break by highest PRIMARYID; cases on any
+FDA quarterly deleted-cases list are dropped. 444 raw PS-matched report versions ->
+416 unique analytic cases (0 removed as FDA-deleted). Primary Suspect filtering is
+applied at acquisition (script 03), before dedup, not after -- see
+`data/processed/README.md` note 1 for why this ordering is fine in practice but should
+be stated if asked.
+
+MedDRA version is **not constant** across the analysis window: confirmed 27.1 at
+2025Q1 up to 28.1 at 2026Q1 by inspecting the FAERS XML extract's
+`<reactionmeddraversionpt>` tag directly (the ASCII files used for the actual pull
+carry no version tag at all). State this range, not a single version, in the
+manuscript methods. MedDRA PT->SOC mapping is not applied (MSSO-licensed, no free
+crosswalk available) -- `case_pt.csv`'s `soc` column is null; see
+`data/processed/README.md` note 2.

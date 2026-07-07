@@ -51,3 +51,24 @@ wrapt==2.2.2
 
 To reproduce this environment exactly, install from this pinned list rather than
 `requirements.txt` (which intentionally tracks top-level packages only).
+
+## MedDRA version
+
+FAERS quarterly ASCII extracts do not carry a per-record MedDRA version -- only the
+XML extract's `<reactionmeddraversionpt>` tag does (confirmed against the FAERS
+Readme.pdf shipped in each quarterly export). Sampled directly from the XML extracts
+for the two ends of the analysis window (2026-07-08):
+
+- **2025Q1** (first quarter of the analysis window): MedDRA **27.1**
+- **2026Q1** (most recent quarter available at acquisition time): MedDRA **28.1**
+
+MedDRA is upversioned biannually and FAERS re-codes to the current version "per CDER
+guidelines" (per the FAERS Readme), so **the MedDRA version is not constant across
+this study's analysis window** -- it advanced by two releases (27.1 -> 28.0 -> 28.1)
+between 2025Q1 and 2026Q1. The intermediate quarters (2025Q2-Q4) were not individually
+checked, since confirming each would require downloading and streaming a ~100+ MB XML
+extract per quarter solely for a metadata tag; the two endpoints establish the range.
+State this version range (27.1-28.1), not a single fixed version, in the manuscript
+methods, and note it as a source of potential PT-coding inconsistency across the study
+period if a reaction term was renamed/deprecated/added between MedDRA releases in that
+range.
