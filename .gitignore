@@ -1,0 +1,21 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS
+.DS_Store
+.ipynb_checkpoints/
+
+# Raw FAERS / OpenVigil pulls: large, never commit
+data/raw/
+data/**/*.zip
+data/**/*.txt
+
+# data/processed/ is tracked by default (small derived CSVs only).
+# .gitignore cannot filter by file size -- before committing anything
+# under data/processed/, manually confirm it is <5 MB. If a derived
+# file grows past that, move it to data/raw/ (git-ignored) or add an
+# explicit path exclusion below instead of committing it.
