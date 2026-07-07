@@ -48,4 +48,9 @@ Append methodological decisions here as they are made, in the format:
 Decision and rationale.
 ```
 
-(No entries yet — repository just scaffolded.)
+### 2026-07-08 — Candidate confirmed: datopotamab deruxtecan
+Kept datopotamab deruxtecan as the study drug after an iterative saturation check (see
+`docs/candidate_justification.md`) found no dedicated FAERS/VigiBase disproportionality
+study of the drug; nearest overlap is a 2026 class-level ADC FAERS paper that lists it in
+a roster but reports zero drug-level results for it. Re-check for saturation before
+manuscript submission given how fast this literature is moving.
