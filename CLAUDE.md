@@ -164,3 +164,34 @@ F2's "Dry eye"/"Infusion related reaction" labels initially collided (fixed by
 alternating label offsets by proximity). Always visually inspect rendered figures,
 not just confirm the script exits 0 -- the anti-pattern list in the dataviz skill
 does not catch layout collisions, only encoding mistakes.
+
+### 2026-07-08 — Full manuscript draft
+`docs/manuscript.md`. Every number in Abstract/Results/Discussion/Limitations was
+checked by hand against the T1-T5 tables (or, where a claim needed a number not in
+the polished T1-T5 set, against the underlying `signals_all.csv`/`top_pts_*.csv`
+output it was cited to explicitly) -- not just written from memory of earlier
+turns. This caught two real drafting errors before they shipped: the T2
+label-listed count was written backwards (said "seven listed, eight not"; actual
+split is 8 Y / 7 N per `T2_top_pts_by_frequency.csv`), and a first-draft Pneumonitis
+citation pointed at Table 2 even though Pneumonitis (a=6) isn't in that table's top
+15 -- refined to cite `signals_all.csv` directly instead of inventing a Table 2
+row that doesn't exist. Lesson: re-verify every number against its cited source at
+draft time, even numbers already established earlier in the conversation.
+
+External comparator numbers (Shi et al. 2024 T-DXd ILD/pneumonitis IC025 values, used
+qualitatively in Discussion) are cited to that paper, not to our own tables --
+confirmed the exact figures via a targeted re-fetch of the source rather than
+relying on a paraphrase from earlier phase-05 research notes.
+
+Wrote the Methods section directly from the actual executed pipeline (scripts
+03-06 docstrings, prior CLAUDE.md entries, docs/environment.md), not from
+`docs/protocol.md` -- that file still does not exist despite being referenced by
+name in four separate task requests across this project. It should be written
+(retroactively, from this manuscript's Methods section, which is now the closest
+thing to a canonical protocol this project has) so future phases have one
+authoritative source instead of parameters scattered across chat turns.
+
+American spelling used throughout (characterize, analyze, behavior), per the
+project's "consistent, not mixed" spelling rule -- chosen over British because this
+is a US-FDA-database study and the OpenVigil reference paper (PLOS ONE) is American,
+even though the GLP-1RA reference paper is British-English.
