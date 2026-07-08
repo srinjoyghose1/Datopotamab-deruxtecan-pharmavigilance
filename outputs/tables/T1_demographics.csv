@@ -1,0 +1,38 @@
+item,n,pct
+Sex,,
+  F,319.0,76.7
+  M,72.0,17.3
+  Unknown,25.0,6.0
+Age band,,
+  <18,0.0,0.0
+  18-64,112.0,26.9
+  65-74,62.0,14.9
+  >=75,22.0,5.3
+  Unknown,220.0,52.9
+Reporter type,,
+  Physician,203.0,48.8
+  Other health professional,102.0,24.5
+  Pharmacist,46.0,11.1
+  Unknown/not reported,39.0,9.4
+  Consumer,26.0,6.2
+Report year (init. FDA receipt),,
+  2025,303.0,72.8
+  2026,113.0,27.2
+"Reporting country (top 8, reporter_country)",,
+  US,259.0,62.3
+  JP,117.0,28.1
+  CA,11.0,2.6
+  EU,8.0,1.9
+  AT,7.0,1.7
+  CH,4.0,1.0
+  ES,3.0,0.7
+  AU,2.0,0.5
+Serious outcome (FAERS OUTC code),,
+  Death,102.0,24.5
+  Life-threatening,2.0,0.5
+  Hospitalization,69.0,16.6
+  Disability,5.0,1.2
+  Congenital anomaly,0.0,0.0
+  Required intervention,0.0,0.0
+  Other serious,109.0,26.2
+  Any serious outcome,225.0,54.1

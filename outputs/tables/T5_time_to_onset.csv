@@ -1,0 +1,6 @@
+Group,n,Median (days),Q1 (days),Q3 (days),Weibull shape (beta),beta 95% CI lower,beta 95% CI upper,Hazard pattern
+Overall,90,22.0,3.0,55.75,0.656,0.546,0.766,early-failure (decreasing hazard)
+ILD/pneumonitis *,3,18.0,9.0,44.0,0.639,0.026,1.252,consistent with random/constant hazard (CI spans 1)
+Ocular *,4,11.5,7.5,14.25,1.159,0.114,2.204,consistent with random/constant hazard (CI spans 1)
+Stomatitis *,8,14.0,3.75,33.0,0.669,0.327,1.011,consistent with random/constant hazard (CI spans 1)
+Infusion-related reaction *,6,0.0,0.0,15.75,0.469,0.187,0.751,early-failure (decreasing hazard)

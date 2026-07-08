@@ -136,3 +136,31 @@ silently keeping them.
   per-AESI Weibull fits should be reported as exploratory only.
 - SOC rollup remains a single "Unmapped" bucket (284/284 PTs) -- same MedDRA
   licensing gap as scripts/04. No change in status.
+
+### 2026-07-08 — Publication tables/figures: presentation conventions
+`scripts/07_tables_figures.py`. Table/figure style follows the two reference papers
+(plain bordered tables, light-gray header/section bands, N stated in every title;
+simple bar/scatter charts with data labels, not dense chart chrome). Colors follow
+the project's dataviz-skill palette: one categorical hue per series, status-red
+highlight (not a generic series color) for "signal vs not" in the F2 volcano plot,
+diverging blue/red centered at ROR=1 for the F5 heatmap.
+
+"Label-listed Y/N" in T2 is the AESI_LABEL_PTS/COMMON_AR_LABEL_PTS sets from the
+script -- the label's named AESIs (ILD/pneumonitis, ocular, stomatitis, infusion
+reactions) plus its >=20% NSCLC-pool common-AR list, restricted to PTs that actually
+string-match our data (verified by hand; several label lab-abnormality terms like
+"decreased hemoglobin"/"increased AST" never appear as PTs in this cohort at all --
+not forced into the set).
+
+F1 (SOC bar chart) is currently a single bar (Unmapped) -- a literal "one-bar bar
+chart" would be a dataviz anti-pattern, so the single bar carries an in-figure
+annotation explaining the MedDRA crosswalk gap rather than pretending there's a
+real categorical comparison. The code renders a normal multi-bar chart the moment
+more than one SOC exists.
+
+Caught and fixed before shipping: F1/F2/F5's x-axis labels initially overlapped the
+mandatory N/data-window caption (fixed via a dedicated bottom margin in `savefig`);
+F2's "Dry eye"/"Infusion related reaction" labels initially collided (fixed by
+alternating label offsets by proximity). Always visually inspect rendered figures,
+not just confirm the script exits 0 -- the anti-pattern list in the dataviz skill
+does not catch layout collisions, only encoding mistakes.
