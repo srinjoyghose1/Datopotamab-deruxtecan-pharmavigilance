@@ -227,6 +227,55 @@ infusion-related reactions. This analysis does not identify a candidate
 off-label signal warranting a new, specific monitoring recommendation beyond
 what the label already specifies.
 
+## Surveillance implications
+
+A natural question for a study like this is whether it actually supports early
+safety surveillance for a newly deployed drug, or whether it's only useful in
+hindsight. The evidence says yes, with a specific structural caveat.
+
+**How this compares to when dedicated FAERS studies normally appear for a new
+ADC:**
+
+| Drug | Approved | First dedicated FAERS disproportionality study | Lag |
+|---|---|---|---|
+| Trastuzumab deruxtecan (Enhertu) | 2019-12-20 | 2022-10-06, *J Clin Pharm Ther* | ~34 months |
+| Sacituzumab govitecan (Trodelvy) | 2020-04-22 | 2023-11-10, *Front Pharmacol* (explicitly billed as "the first real-world safety profile of SG") | ~43 months |
+| Datopotamab deruxtecan | 2025-01-17 | This analysis | ~18 months |
+
+Both comparator ADCs are the same drug class and era of FAERS methodology, and
+both waited roughly three years for a data window their authors considered
+mature before publishing. This project analyzed a new ADC's post-marketing
+profile in about half that time by treating the short window as the object of
+study rather than a reason to wait — and still recovered four signals
+(stomatitis, interstitial lung disease, dry eye, infusion-related reaction)
+that map directly onto the eventual label (Discussion, above).
+
+**But this speed exposes a real design problem, not just a benefit.** This
+study's own results show it directly: "Pneumonitis" (a=6) passed ROR and Evans'
+PRR/chi-square cleanly but failed the approximate BCPNN criterion purely
+because its variance is dominated by a tiny expected count at low N — a known
+conservative property of the approximation, worse the earlier you look. A
+surveillance system that demands full four-algorithm consensus from day one
+will systematically under-call real signals during exactly the window when
+catching them early matters most.
+
+**The practical implication is a tiered alarm, not a single threshold:**
+
+1. **Watch list** — ROR + Evans' PRR/chi-square alone (cheap, stable even at
+   low N) routes a PT to human review, not automatic action.
+2. **Priority signal** — full four-algorithm consensus (or the stricter EB05
+   tier) escalates faster and with more confidence.
+3. **Administrative-artifact triage runs before either tier.** Four of this
+   study's eight consensus "signals" were FAERS coding noise (Disease
+   progression, Off label use, No adverse event, Prescribed underdose), not
+   adverse events — see Discussion. An early-surveillance system built on this
+   pattern needs that filter first, or real signals drown in noise exactly
+   when reviewer attention is scarcest, right after launch.
+4. **The output is a trend, not a verdict.** The value of this approach isn't
+   any single snapshot — it's rerunning the same pipeline every quarter and
+   watching which watch-list items graduate to priority-signal status as case
+   counts grow.
+
 ## Limitations
 
 **The short ~18-month observation window is the primary limitation and should
@@ -263,7 +312,12 @@ the 2026 class-level ADC FAERS study that nominally includes but does not report
 drug-level results for this drug; Shi et al. (2024), the FAERS-based ADC-class
 ILD/pneumonitis study cited above; and the two reference papers in `refs/`
 (OpenVigil FDA methods paper; FAERS-based GLP-1RA ADR study) whose presentation
-conventions this project's tables, figures, and manuscript follow.
+conventions this project's tables, figures, and manuscript follow. The
+surveillance-timing comparison above cites two additional sources: the first
+dedicated FAERS study of trastuzumab deruxtecan (*J Clin Pharm Ther*,
+2022-10-06, data window 2019-12-21 to 2022-06-28, PMC9827941) and of
+sacituzumab govitecan (*Front Pharmacol*, 2023-11-10, data window April
+2020-March 2023, PMC10667432).
 
 ## Data notes & MedDRA version
 
