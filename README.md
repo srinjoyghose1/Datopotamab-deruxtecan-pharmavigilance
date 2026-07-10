@@ -8,15 +8,6 @@ adverse event reports using four disproportionality algorithms, compares recover
 signals against the current FDA label, and characterizes reporting demographics,
 serious outcomes, subgroup patterns, and time to onset.
 
-> **This is a hypothesis-generating, not a causal or confirmatory, analysis.**
-> FAERS is a spontaneous-report database with no denominator of drug exposure;
-> disproportionality measures reflect relative reporting patterns, not incidence
-> or risk, and a statistical association here does not establish that the drug
-> caused the event. Every signal in this repository should be read as a
-> candidate for further investigation, not a confirmed safety finding — this is
-> stated everywhere it matters (protocol, results, discussion, table/figure
-> captions) precisely because the observation window is short (see below).
-
 ## Background & rationale
 
 Datopotamab deruxtecan couples a humanized IgG1 antibody against TROP2
