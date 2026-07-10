@@ -143,31 +143,44 @@ After FDA-standard deduplication, **416 unique cases** with datopotamab
 deruxtecan as Primary Suspect were analyzed. Reporters were predominantly female
 (76.7%, n=319); 54.1% of cases (n=225) carried a FAERS serious-outcome flag,
 including 102 deaths (24.5%). Of **284 distinct PTs** tested against the
-whole-database background, **8 met the consensus signal rule**, of which 7 also
-met the stricter EB05>2 tier:
+whole-database background, **8 met the consensus signal rule** (7 also met the
+stricter EB05>2 tier) — split below by whether the PT is a genuine clinical
+adverse event or a FAERS administrative/case-context code, not mixed into one
+ROR-ranked list (see Discussion for why that split matters):
+
+**Clinical AE signals (4)** — map directly onto the current label:
 
 | PT | a | ROR (95% CI) | PRR | IC (IC025) | EBGM (EB05) | Strict signal |
 |---|---|---|---|---|---|---|
 | Stomatitis | 64 | 59.12 (45.23-77.26) | 50.18 | 5.17 (3.03) | 49.20 (39.85) | Yes |
-| Disease progression | 86 | 44.12 (34.78-55.98) | 35.21 | 4.87 (3.20) | 34.73 (28.97) | Yes |
-| Prescribed underdose | 9 | 19.29 (9.95-37.40) | 18.90 | 3.28 (0.28) | 17.82 (9.86) | Yes |
 | Interstitial lung disease | 16 | 15.20 (9.21-25.07) | 14.65 | 3.37 (1.03) | 14.18 (9.18) | Yes |
-| No adverse event | 42 | 10.23 (7.43-14.08) | 9.30 | 3.08 (1.75) | 9.18 (7.07) | Yes |
 | Dry eye | 13 | 7.63 (4.39-13.26) | 7.42 | 2.58 (0.55) | 7.15 (4.40) | Yes |
 | Infusion related reaction | 14 | 7.34 (4.31-12.51) | 7.13 | 2.56 (0.61) | 6.88 (4.32) | Yes |
+
+**Administrative/case-context signals (4)** — statistically disproportionate but not adverse events:
+
+| PT | a | ROR (95% CI) | PRR | IC (IC025) | EBGM (EB05) | Strict signal |
+|---|---|---|---|---|---|---|
+| Disease progression | 86 | 44.12 (34.78-55.98) | 35.21 | 4.87 (3.20) | 34.73 (28.97) | Yes |
+| Prescribed underdose | 9 | 19.29 (9.95-37.40) | 18.90 | 3.28 (0.28) | 17.82 (9.86) | Yes |
+| No adverse event | 42 | 10.23 (7.43-14.08) | 9.30 | 3.08 (1.75) | 9.18 (7.07) | Yes |
 | Off label use | 66 | 2.56 (1.97-3.33) | 2.31 | 1.19 (0.57) | 2.30 (1.87) | No (EB05<2) |
 
-*a = case count; full intervals and all 284 tested PTs are in
-`outputs/tables/signals_all.csv` and `outputs/tables/T3_top_signals_by_strength.csv`.*
+*a = case count; full intervals and all 284 tested PTs, including the
+"Signal category" column that drives this split, are in
+`outputs/tables/signals_all.csv` and `outputs/tables/T3_top_signals_by_strength.csv`
+(T3 is grouped the same way, Clinical AE block then Administrative/case-context
+block, each ranked by ROR within).*
 
-Four of these eight (Disease progression, Off label use, No adverse event,
-Prescribed underdose) are FAERS administrative/case-context codes, not adverse
-events — see Discussion. Time to onset was computable for 90/416 cases (21.6%);
-median 22.0 days (IQR 3.0-55.75), Weibull shape β=0.656 (95% CI 0.546-0.766,
-early-failure/decreasing hazard). System Organ Class rollup was not possible
-(no licensed MedDRA crosswalk); all 284 PTs fall into a single unmapped bucket.
-Full tables: `outputs/tables/T1_demographics.csv` through `T5_time_to_onset.csv`
-(and `tables.xlsx`). Full figures: `outputs/figures/F1`-`F5` (300dpi PNG + SVG).
+Time to onset was computable for 90/416 cases (21.6%); median 22.0 days (IQR
+3.0-55.75), Weibull shape β=0.656 (95% CI 0.546-0.766, early-failure/decreasing
+hazard). System Organ Class rollup was not possible (no licensed MedDRA
+crosswalk); all 284 PTs fall into a single unmapped bucket. Full tables:
+`outputs/tables/T1_demographics.csv` through `T5_time_to_onset.csv` (and
+`tables.xlsx`). Full figures: `outputs/figures/F1`-`F5` (300dpi PNG + SVG) — F2
+and F3 color/group by this same clinical-vs-administrative split, and F5 (the
+subgroup heatmap) is restricted to the 4 clinical AE signals only, since a
+sex/age breakdown of "Off label use" isn't a clinically meaningful question.
 
 ## Discussion & interpretation
 
@@ -200,6 +213,9 @@ codes rather than adverse events; their statistical disproportionality reflects
 reporting conventions in a heavily pretreated oncology population, not a safety
 concern, and this is a useful illustration of why automated disproportionality
 output requires clinical review before being read as a set of safety findings.
+This distinction is now a first-class `signal_category` column in
+`outputs/tables/signals_all.csv` (curated against all 284 tested PTs, not just
+these four), not just a note in prose — see Key results summary above.
 
 The sex-concentration of several signals in female patients (Stomatitis, Disease
 progression, Prescribed underdose, Infusion related reaction) parallels this
