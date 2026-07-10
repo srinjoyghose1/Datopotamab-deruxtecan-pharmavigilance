@@ -69,6 +69,24 @@ STRICT_CRITERIA = CONSENSUS_CRITERIA + ["mgps_signal"]
 
 SANITY_CHECK_PTS = ["Interstitial lung disease", "Pneumonitis", "Stomatitis", "Nausea"]
 
+# PTs that are FAERS administrative/case-context codes, not clinical adverse events --
+# curated by hand against all 284 PTs actually tested in this cohort (not just the
+# ones that happen to reach consensus), covering disease-progression-as-AE artifacts
+# and product/dosing/administration-issue codes. Everything not in this set is
+# treated as a clinical AE signal. This distinction was previously only made in prose
+# (manuscript, README); it is added here as a first-class column so it propagates
+# into every downstream table and figure instead of being re-derived ad hoc.
+NON_CLINICAL_ARTIFACT_PTS = {
+    "Disease progression", "Neoplasm progression",
+    "Off label use", "No adverse event",
+    "Prescribed underdose", "Underdose", "Drug ineffective",
+    "Incorrect product formulation administered", "Intentional product use issue",
+    "Product availability issue", "Product distribution issue",
+    "Product dose omission issue", "Product leakage", "Product prescribing issue",
+    "Product use in unapproved indication", "Product use issue",
+    "Therapeutic response unexpected", "Therapy non-responder",
+}
+
 
 def load_deleted_caseids() -> set:
     deleted = set()
@@ -273,6 +291,11 @@ def main():
     df["consensus_signal"] = df[CONSENSUS_CRITERIA].all(axis=1)
     df["strict_signal"] = df[STRICT_CRITERIA].all(axis=1)
 
+    # --- clinical vs. administrative-artifact classification ---
+    df["signal_category"] = df["pt"].apply(
+        lambda pt: "Administrative/case-context" if pt in NON_CLINICAL_ARTIFACT_PTS else "Clinical AE"
+    )
+
     df = df.sort_values(["consensus_signal", "ror"], ascending=[False, False])
 
     TABLES_DIR.mkdir(parents=True, exist_ok=True)
@@ -288,6 +311,10 @@ def main():
     print(f"Passing MGPS criterion (EB05 > {EB05_THRESHOLD}): {df['mgps_signal'].sum()}")
     print(f"Consensus signal ({' AND '.join(CONSENSUS_CRITERIA)}): {df['consensus_signal'].sum()}")
     print(f"Strict signal (consensus AND mgps_signal): {df['strict_signal'].sum()}")
+    consensus_by_category = signals_significant["signal_category"].value_counts()
+    print(f"Of the {len(signals_significant)} consensus signals: "
+          f"{consensus_by_category.get('Clinical AE', 0)} Clinical AE, "
+          f"{consensus_by_category.get('Administrative/case-context', 0)} Administrative/case-context")
 
     print("\n=== SANITY CHECK: known label events ===")
     for pt_name in SANITY_CHECK_PTS:

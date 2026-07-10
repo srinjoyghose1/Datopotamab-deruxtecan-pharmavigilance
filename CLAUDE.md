@@ -195,3 +195,37 @@ American spelling used throughout (characterize, analyze, behavior), per the
 project's "consistent, not mixed" spelling rule -- chosen over British because this
 is a US-FDA-database study and the OpenVigil reference paper (PLOS ONE) is American,
 even though the GLP-1RA reference paper is British-English.
+
+### 2026-07-10 — Clinical vs. administrative-artifact signal classification
+Added `signal_category` as a first-class column in `scripts/05_disproportionality.py`'s
+output (`signals_all.csv`, `signals_significant.csv`), via a curated
+`NON_CLINICAL_ARTIFACT_PTS` set covering disease-progression-as-AE and
+product/dosing/administration-issue codes (18 PTs total across all 284 tested,
+verified by hand against the full PT list, not just the 4 that happen to reach
+consensus). This had previously only been stated in prose (manuscript, README);
+it's now computed once and propagates into every downstream table/figure instead
+of being re-derived ad hoc each time.
+
+`scripts/07_tables_figures.py` uses this to clean up figures that were mixing
+clinical AE signals with FAERS coding artifacts with no visual distinction:
+- **T2/T3**: added a "Signal category" column; T3 is now grouped (Clinical AE
+  block, then Administrative/case-context block, each sorted by ROR within),
+  not one flat ROR-ranked list.
+- **F2 (volcano)**: 3-color split (muted gray = not a signal, red = clinical AE
+  consensus signal, orange = administrative/case-context consensus signal)
+  instead of a single "signal" color lumping both together.
+- **F3 (forest)**: two visually separated blocks (divider line + legend) instead
+  of one ROR-sorted list -- this was the figure most directly driving the
+  "looks unclean" complaint, since a reader scanning top-to-bottom by ROR alone
+  would see "Disease progression" outrank "Interstitial lung disease" with no
+  cue they're different kinds of thing.
+- **F5 (subgroup heatmap)**: restricted to the 4 Clinical AE signals only --
+  a sex/age breakdown of "Disease progression" or "Off label use" isn't a
+  clinically meaningful question, and dropping them from 8 rows to 4 also
+  shrank the figure enough that the bottom-margin fraction needed rebalancing
+  (0.34 -> 0.48) to avoid the tick labels re-colliding with the caption.
+
+Re-verify visually after any change to row/column count in a figure that uses a
+fixed bottom-margin fraction in `savefig()` -- the fraction is relative to total
+figure height, so shrinking the figure shrinks the absolute margin too, even
+though nothing about the text itself changed.

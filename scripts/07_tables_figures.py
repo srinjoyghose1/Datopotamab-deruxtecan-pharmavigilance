@@ -169,8 +169,8 @@ def build_table1() -> pd.DataFrame:
 def build_table2(signals_all: pd.DataFrame) -> pd.DataFrame:
     top = signals_all.sort_values("a", ascending=False).head(15).copy()
     top["label_listed"] = top["pt"].isin(LABEL_LISTED_PTS).map({True: "Y", False: "N"})
-    out = top[["pt", "a", "ror", "ror_ci_lower", "ror_ci_upper", "prr", "ic", "ic025", "ebgm", "eb05", "label_listed"]].copy()
-    out.columns = ["PT", "a (n cases)", "ROR", "ROR 95% CI lower", "ROR 95% CI upper",
+    out = top[["pt", "signal_category", "a", "ror", "ror_ci_lower", "ror_ci_upper", "prr", "ic", "ic025", "ebgm", "eb05", "label_listed"]].copy()
+    out.columns = ["PT", "Signal category", "a (n cases)", "ROR", "ROR 95% CI lower", "ROR 95% CI upper",
                    "PRR", "IC", "IC025", "EBGM", "EB05", "Label-listed (Y/N)"]
     return out.round(3)
 
@@ -180,10 +180,21 @@ def build_table2(signals_all: pd.DataFrame) -> pd.DataFrame:
 # ============================================================================
 
 def build_table3(signals_significant: pd.DataFrame) -> pd.DataFrame:
-    out = signals_significant.sort_values("ror", ascending=False).copy()
-    out = out[["pt", "a", "ror", "ror_ci_lower", "ror_ci_upper", "prr", "chi2",
+    # Grouped, not a flat ROR-sorted list: Clinical AE signals first, then
+    # Administrative/case-context codes, each internally sorted by ROR. Mixing
+    # the two in one ranked list was the exact "unclean" complaint this
+    # grouping addresses -- a reader scanning top-to-bottom by ROR alone would
+    # see "Disease progression" (an artifact) ranked above "Interstitial lung
+    # disease" (a real AE) with no visual cue they're different kinds of thing.
+    category_order = pd.Categorical(
+        signals_significant["signal_category"], categories=["Clinical AE", "Administrative/case-context"]
+    )
+    out = signals_significant.assign(_cat=category_order).sort_values(
+        ["_cat", "ror"], ascending=[True, False]
+    ).copy()
+    out = out[["pt", "signal_category", "a", "ror", "ror_ci_lower", "ror_ci_upper", "prr", "chi2",
                "ic", "ic025", "ebgm", "eb05", "strict_signal"]].copy()
-    out.columns = ["PT", "a (n cases)", "ROR", "ROR 95% CI lower", "ROR 95% CI upper",
+    out.columns = ["PT", "Signal category", "a (n cases)", "ROR", "ROR 95% CI lower", "ROR 95% CI upper",
                    "PRR", "chi2 (Yates)", "IC", "IC025", "EBGM", "EB05", "Strict signal (+EB05>2)"]
     return out.round(3)
 
@@ -262,19 +273,24 @@ def figure2_volcano(signals_all: pd.DataFrame):
     df = signals_all.copy()
     df["log_ror"] = np.log2(df["ror"].clip(lower=1e-6))
     fig, ax = plt.subplots(figsize=(7.5, 5.5))
+
     non_signal = df[~df["consensus_signal"]]
-    signal = df[df["consensus_signal"]]
+    clinical = df[df["consensus_signal"] & (df["signal_category"] == "Clinical AE")]
+    admin = df[df["consensus_signal"] & (df["signal_category"] == "Administrative/case-context")]
+
     ax.scatter(non_signal["a"], non_signal["log_ror"], s=18, color=COLOR_MUTED, alpha=0.55,
                linewidths=0, label="Not a consensus signal")
-    ax.scatter(signal["a"], signal["log_ror"], s=36, color=COLOR_SERIES6_RED, alpha=0.9,
-               linewidths=0, label="Consensus signal")
+    ax.scatter(admin["a"], admin["log_ror"], s=36, color=COLOR_SERIES8_ORANGE, alpha=0.9,
+               linewidths=0, label="Consensus signal -- administrative/case-context (not an AE)")
+    ax.scatter(clinical["a"], clinical["log_ror"], s=36, color=COLOR_SERIES6_RED, alpha=0.9,
+               linewidths=0, label="Consensus signal -- clinical AE")
     ax.axhline(0, color=COLOR_MUTED, linewidth=1)
     ax.axvline(3, color=COLOR_MUTED, linewidth=1)
     ax.set_xscale("log")
     ax.set_xlabel("Report count (a, log scale)")
     ax.set_ylabel("log2(ROR)")
     ax.set_title("F2. Signal volcano plot: ROR vs. report count", fontsize=11, loc="left")
-    top_labels = signal.sort_values("a").reset_index(drop=True)
+    top_labels = pd.concat([clinical, admin]).sort_values("a").reset_index(drop=True)
     for i, r in top_labels.iterrows():
         # Alternate the label above/below its point so close-together points
         # (e.g. Dry eye / Infusion related reaction, similar a and ROR) don't
@@ -285,26 +301,52 @@ def figure2_volcano(signals_all: pd.DataFrame):
                     xytext=(4, dy), textcoords="offset points", va=va)
     ax.legend(frameon=False, fontsize=8, loc="upper left")
     ax.spines[["top", "right"]].set_visible(False)
-    caption = (f"F2. {WINDOW_NOTE}. Dashed reference lines: log2(ROR)=0 (null value) and "
-               "a=3 (Evans minimum case count). Top 8 consensus signals labeled by ROR.")
+    caption = (f"F2. {WINDOW_NOTE}. Reference lines: log2(ROR)=0 (null value) and "
+               "a=3 (Evans minimum case count). Consensus signals split by category -- "
+               "orange points meet the statistical criteria but are FAERS administrative/"
+               "case-context codes, not adverse events (see Discussion).")
     savefig(fig, "F2_volcano", caption)
 
 
 def figure3_forest(signals_significant: pd.DataFrame):
-    df = signals_significant.sort_values("ror").reset_index(drop=True)
-    fig, ax = plt.subplots(figsize=(7, 0.5 * len(df) + 1.5))
-    y = np.arange(len(df))
-    ax.errorbar(df["ror"], y, xerr=[df["ror"] - df["ror_ci_lower"], df["ror_ci_upper"] - df["ror"]],
-                fmt="o", color=COLOR_SERIES1_BLUE, ecolor=COLOR_SERIES1_BLUE, elinewidth=1.5,
-                capsize=3, markersize=6)
+    # Two grouped blocks (Clinical AE, then Administrative/case-context), each
+    # sorted by ROR, with a visual gap and distinct marker color between them --
+    # a single ROR-sorted list mixed real AEs with FAERS coding artifacts with
+    # no visual distinction, which was the source of the "unclean" complaint.
+    clinical = signals_significant[signals_significant["signal_category"] == "Clinical AE"].sort_values("ror")
+    admin = signals_significant[signals_significant["signal_category"] == "Administrative/case-context"].sort_values("ror")
+
+    gap = 1  # blank row between groups
+    n_rows = len(clinical) + len(admin) + gap
+    fig, ax = plt.subplots(figsize=(7.5, 0.5 * n_rows + 1.5))
+
+    y_admin = np.arange(len(admin))
+    y_clinical = np.arange(len(admin) + gap, len(admin) + gap + len(clinical))
+
+    for sub_df, y_pos, color, label in [
+        (admin, y_admin, COLOR_SERIES8_ORANGE, "Administrative/case-context"),
+        (clinical, y_clinical, COLOR_SERIES6_RED, "Clinical AE"),
+    ]:
+        if len(sub_df) == 0:
+            continue
+        ax.errorbar(sub_df["ror"], y_pos,
+                    xerr=[sub_df["ror"] - sub_df["ror_ci_lower"], sub_df["ror_ci_upper"] - sub_df["ror"]],
+                    fmt="o", color=color, ecolor=color, elinewidth=1.5, capsize=3, markersize=6, label=label)
+
+    all_y = list(y_admin) + list(y_clinical)
+    all_pt = list(admin["pt"]) + list(clinical["pt"])
     ax.axvline(1, color=COLOR_MUTED, linewidth=1)
-    ax.set_yticks(y)
-    ax.set_yticklabels(df["pt"], fontsize=9)
+    ax.axhline(len(admin) + gap / 2 - 0.5, color=COLOR_GRIDLINE, linewidth=1)
+    ax.set_yticks(all_y)
+    ax.set_yticklabels(all_pt, fontsize=9)
     ax.set_xscale("log")
     ax.set_xlabel("ROR (log scale, 95% CI)")
-    ax.set_title("F3. Forest plot of consensus signals (ROR, 95% CI)", fontsize=11, loc="left")
+    ax.set_title("F3. Forest plot of consensus signals, grouped by category", fontsize=11, loc="left")
+    ax.legend(frameon=False, fontsize=8, loc="lower right")
     ax.spines[["top", "right"]].set_visible(False)
-    caption = f"F3. {WINDOW_NOTE}. All 8 PTs meeting the consensus signal rule (ROR CI-lower>1 AND Evans PRR/chi2 AND IC025>0)."
+    caption = (f"F3. {WINDOW_NOTE}. All 8 PTs meeting the consensus signal rule (ROR CI-lower>1 AND "
+               "Evans PRR/chi2 AND IC025>0), grouped by whether the PT is a clinical adverse event "
+               "or a FAERS administrative/case-context code (see Discussion) -- not one ROR-ranked list.")
     savefig(fig, "F3_forest_consensus", caption)
 
 
@@ -338,11 +380,18 @@ def figure4_tto_histogram():
     savefig(fig, "F4_tto_histogram_weibull", caption)
 
 
-def figure5_subgroup_heatmap():
+def figure5_subgroup_heatmap(signals_significant: pd.DataFrame):
+    # Restricted to Clinical AE signals only -- subgroup breakdown of FAERS
+    # administrative/case-context codes (Disease progression, Off label use,
+    # etc.) by sex/age isn't a clinically meaningful question, and including
+    # them alongside real AEs was part of why this figure read as cluttered.
+    clinical_pts = set(
+        signals_significant.loc[signals_significant["signal_category"] == "Clinical AE", "pt"]
+    )
     sex_df = pd.read_csv(TABLES_DIR / "subgroup_ror_sex.csv")
     age_df = pd.read_csv(TABLES_DIR / "subgroup_ror_age_band.csv")
-    sex_df = sex_df.rename(columns={"sex_group": "group"})
-    age_df = age_df.rename(columns={"age_band": "group"})
+    sex_df = sex_df[sex_df["pt"].isin(clinical_pts)].rename(columns={"sex_group": "group"})
+    age_df = age_df[age_df["pt"].isin(clinical_pts)].rename(columns={"age_band": "group"})
     combined = pd.concat([sex_df.assign(dim="Sex"), age_df.assign(dim="Age band")], ignore_index=True)
 
     pts = combined["pt"].unique()
@@ -369,11 +418,18 @@ def figure5_subgroup_heatmap():
                         color="white" if abs(np.log2(max(val, 1e-6))) > vmax * 0.5 else COLOR_TEXT_PRIMARY)
     cbar = fig.colorbar(im, ax=ax, shrink=0.7)
     cbar.set_label("log2(ROR)", fontsize=8)
-    ax.set_title("F5. Subgroup ROR heatmap (consensus signals x sex / age band)", fontsize=11, loc="left")
-    caption = (f"F5. {WINDOW_NOTE}. Diverging scale centered at ROR=1 (white); blue=ROR<1, red=ROR>1. "
+    ax.set_title("F5. Subgroup ROR heatmap (clinical AE signals x sex / age band)", fontsize=11, loc="left")
+    caption = (f"F5. {WINDOW_NOTE}. Restricted to the 4 Clinical AE consensus signals -- "
+               "Administrative/case-context codes (Disease progression, Off label use, etc.) "
+               "are excluded, since a sex/age breakdown of coding artifacts isn't clinically "
+               "meaningful. Diverging scale centered at ROR=1 (white); blue=ROR<1, red=ROR>1. "
                "Cells with Haldane-Anscombe continuity correction and 'Unknown'-group concentration "
                "are not distinguished here -- see subgroup_ror_*.csv for that caveat.")
-    savefig(fig, "F5_subgroup_heatmap", caption, bottom=0.34)
+    # bottom margin is a fraction of total figure height, and restricting to 4
+    # clinical PTs (down from 8) shrank the figure -- the same fraction now
+    # gives less absolute room for the rotated tick labels + caption, so it's
+    # bumped up here rather than left at the 8-row value.
+    savefig(fig, "F5_subgroup_heatmap", caption, bottom=0.48)
 
 
 # ============================================================================
@@ -406,7 +462,8 @@ def main():
 
     t3 = build_table3(signals_significant)
     save_table("T3_top_signals_by_strength",
-               f"Table 3. Consensus signals ranked by ROR, all four algorithms ({WINDOW_NOTE})", t3, wb)
+               f"Table 3. Consensus signals by category (Clinical AE, then Administrative/case-context), "
+               f"ranked by ROR within each ({WINDOW_NOTE})", t3, wb)
 
     t4 = build_table4(soc_rollup)
     save_table("T4_soc_distribution", f"Table 4. Signal distribution by MedDRA SOC ({WINDOW_NOTE})", t4, wb)
@@ -423,7 +480,7 @@ def main():
     figure2_volcano(signals_all)
     figure3_forest(signals_significant)
     figure4_tto_histogram()
-    figure5_subgroup_heatmap()
+    figure5_subgroup_heatmap(signals_significant)
 
     print("\nAll tables and figures written.")
 
