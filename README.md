@@ -182,6 +182,84 @@ and F3 color/group by this same clinical-vs-administrative split, and F5 (the
 subgroup heatmap) is restricted to the 4 clinical AE signals only, since a
 sex/age breakdown of "Off label use" isn't a clinically meaningful question.
 
+### FAERS breast-cancer comparator analysis
+
+A sensitivity analysis restricted the Dato-DXd target to **196 deduplicated
+cases with an explicitly linked breast-cancer indication**. DRUG and INDI were
+joined using `primaryid + drug_seq`, preventing an indication belonging to a
+different medication from qualifying the case. All explicitly reported breast-
+cancer subtypes were included. Three comparator cohorts were evaluated:
+
+| Cohort | N cases |
+|---|---:|
+| Dato-DXd, breast cancer | 196 |
+| Full FAERS excluding all 416 Dato-DXd cases | 1,809,719 |
+| Active breast-cancer comparator | 6,092 |
+| Active comparator excluding sacituzumab govitecan and trastuzumab deruxtecan | 3,091 |
+
+The active comparator included Primary-Suspect breast-cancer reports for
+capecitabine, eribulin, gemcitabine, vinorelbine, paclitaxel/nab-paclitaxel,
+carboplatin, sacituzumab govitecan, and trastuzumab deruxtecan. The following
+table contains every PT that met the complete ROR + PRR + approximate BCPNN
+consensus definition under at least one comparator. Each result is ROR (95% CI),
+followed by consensus status.
+
+| PT | Category | Dato cases | Full FAERS excluding Dato | Active breast comparator | Active comparator excluding SG/T-DXd |
+|---|---|---:|---:|---:|---:|
+| Stomatitis | Clinical AE | 41 | 86.00 (60.90-121.46); **Yes** | 42.14 (26.36-67.38); **Yes** | 38.67 (22.31-67.03); **Yes** |
+| Interstitial lung disease | Clinical AE | 8 | 16.17 (7.96-32.83); **Yes** | 0.96 (0.47-1.97); No | 3.42 (1.57-7.43); No |
+| Dry eye | Clinical AE | 9 | 11.38 (5.83-22.22); **Yes** | 15.38 (6.87-34.45); **Yes** | 10.58 (4.52-24.76); **Yes** |
+| Infusion related reaction | Clinical AE | 8 | 8.97 (4.42-18.20); **Yes** | 4.01 (1.89-8.48); No | 2.44 (1.14-5.20); No |
+| Disease progression | Case context | 78 | 111.92 (84.02-149.07); **Yes** | 8.75 (6.46-11.84); **Yes** | 26.58 (18.43-38.35); **Yes** |
+| Prescribed underdose | Administrative | 9 | 41.99 (21.48-82.08); **Yes** | 73.25 (22.36-240.01); **Yes** | 148.72 (18.74-1,180.07); **Yes** |
+| No adverse event | Administrative | 9 | 4.38 (2.25-8.56); No | 19.50 (8.43-45.13); **Yes** | 148.72 (18.74-1,180.07); **Yes** |
+| Off label use | Administrative | 26 | 2.08 (1.37-3.14); No | 2.89 (1.88-4.44); **Yes** | 1.73 (1.12-2.67); No |
+
+Administrative and case-context terms are displayed for transparency but are not
+interpreted as adverse drug reactions. Among clinical events, stomatitis and dry
+eye were robust across comparator definitions. ILD and infusion-related reaction
+were strongly disproportionate against full FAERS but did not meet the complete
+consensus rule against the active comparators.
+
+#### ILD 2×2 contingency tables
+
+These tables show the actual case counts underlying the ILD estimates. Each table
+accounts for all 196 Dato-DXd breast-cancer cases and every case in its comparator.
+
+**1. Full FAERS excluding all Dato-DXd cases (N=1,809,719)**
+
+| Report group | ILD reported | ILD not reported | Total |
+|---|---:|---:|---:|
+| Dato-DXd, breast cancer | 8 (a) | 188 (b) | 196 |
+| Full FAERS excluding Dato-DXd | 4,750 (c) | 1,804,969 (d) | 1,809,719 |
+
+ROR 16.17 (95% CI 7.96-32.83); PRR 15.55; IC025 0.10; EB05 7.78;
+consensus signal: **Yes**.
+
+**2. Active breast-cancer comparator (N=6,092)**
+
+| Report group | ILD reported | ILD not reported | Total |
+|---|---:|---:|---:|
+| Dato-DXd, breast cancer | 8 (a) | 188 (b) | 196 |
+| Active breast-cancer drugs | 259 (c) | 5,833 (d) | 6,092 |
+
+ROR 0.96 (95% CI 0.47-1.97); PRR 0.96; IC025 -1.41; EB05 0.53;
+consensus signal: **No**.
+
+**3. Active comparator excluding SG and T-DXd (N=3,091)**
+
+| Report group | ILD reported | ILD not reported | Total |
+|---|---:|---:|---:|
+| Dato-DXd, breast cancer | 8 (a) | 188 (b) | 196 |
+| Active drugs excluding SG/T-DXd | 38 (c) | 3,053 (d) | 3,091 |
+
+ROR 3.42 (95% CI 1.57-7.43); PRR 3.32; IC025 -0.46; EB05 1.66;
+consensus signal: **No**.
+
+Complete outputs are in
+`outputs/tables/faers_signals_comparator_all.csv` and
+`outputs/tables/faers_comparator_cohort_sizes.csv`.
+
 ## Discussion & interpretation
 
 Four of the eight consensus signals map directly onto datopotamab deruxtecan's
