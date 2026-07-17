@@ -93,6 +93,38 @@ Role = Primary Suspect, window 2025Q1 through the latest available quarter, expo
 both "Raw data" and "Frequency" as CSV into `data/raw/openvigil/`, then run
 `python scripts/03_load_openvigil.py`.
 
+## JADER sensitivity-analysis source
+
+The independent Japanese analysis uses the PMDA Japanese Adverse Drug Event
+Report database (JADER) public CSV release `pmdacasereport202606`:
+
+| Source file | Role | Encoding |
+|---|---|---|
+| `demo202606.csv` | Case/report-version characteristics | CP932 |
+| `drug202606.csv` | Drug role, generic name, and reason for use | CP932 |
+| `reac202606.csv` | MedDRA/J Preferred Terms, outcome, and onset date | CP932 |
+| `hist202606.csv` | Medical history/underlying disease; retained but not required by the current analysis | CP932 |
+
+The release documentation was updated 2026-05-15 and identifies MedDRA/J 29.0.
+The analysis treats `identifier + report_count` as one report version; PMDA warns
+that the same clinical case may appear more than once when reported by multiple
+reporters, so this key must not be described as a unique-patient identifier.
+
+Raw JADER files are not committed. Obtain the release directly from PMDA, accept
+the terms supplied with it, and run:
+
+```bash
+python scripts/07_jader_comparator.py --jader-dir /path/to/pmdacasereport202606
+```
+
+The script writes aggregate comparator tables to `outputs/tables/` and local
+UTF-8 cohort extracts to `data/processed/`. The case-level extracts are git-ignored
+to avoid secondary redistribution. The PMDA terms also require users publishing
+results to notify PMDA in advance and to state explicitly that the results use the
+PMDA Japanese Adverse Drug Event Report database (JADER). Repository documentation
+is not legal advice; users must review the current terms distributed with their
+release.
+
 ## Known limitation carried forward
 
 openFDA's API (the fallback path in `scripts/03_pull_faers.py`, not used this run

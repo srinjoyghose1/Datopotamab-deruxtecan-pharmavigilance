@@ -22,3 +22,9 @@ data/**/*.txt
 # under data/processed/, manually confirm it is <5 MB. If a derived
 # file grows past that, move it to data/raw/ (git-ignored) or add an
 # explicit path exclusion below instead of committing it.
+
+# Local case-level extracts derived from PMDA JADER. PMDA's terms generally
+# prohibit redistribution of the database; publish aggregate results and code,
+# not these rows. Users regenerate them from a release obtained from PMDA.
+data/processed/jader_dato_cases.csv
+data/processed/jader_dato_case_pt.csv

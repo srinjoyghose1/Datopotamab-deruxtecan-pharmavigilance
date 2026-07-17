@@ -229,3 +229,36 @@ Re-verify visually after any change to row/column count in a figure that uses a
 fixed bottom-margin fraction in `savefig()` -- the fraction is relative to total
 figure height, so shrinking the figure shrinks the absolute margin too, even
 though nothing about the text itself changed.
+
+### 2026-07-15 — Breast-cancer active comparators and JADER sensitivity analysis
+
+Added `scripts/08_faers_comparator.py` and `scripts/07_jader_comparator.py` as
+separate sensitivity analyses; neither replaces the 416-case primary FAERS
+analysis. Standing decisions:
+
+- The FAERS target is restricted to 196 deduplicated Dato-DXd cases with an
+  explicit breast-cancer indication joined through `primaryid + drug_seq`. All
+  explicitly reported breast-cancer subtypes are included. Never infer indication
+  from date, reporter country, or another drug's INDI row.
+- Report three comparator designs: full database excluding every Dato-DXd report,
+  breast-cancer active treatments, and the same active comparator after excluding
+  sacituzumab govitecan and trastuzumab deruxtecan. Comparator sensitivity is part
+  of interpretation, not a search for whichever background produces a signal.
+- JADER is an independent analysis of the PMDA June 2026 release. Its unit is
+  `identifier + report_count` (a report version), not a verified unique patient.
+  Preserve Japanese PTs as authoritative; English fields are curated display
+  labels only, not a licensed bilingual MedDRA crosswalk.
+- Do not pool FAERS and JADER or delete Japanese-origin FAERS reports as presumed
+  duplicates. No shared identifier exists to verify overlap, so either operation
+  would replace observable data with assumptions.
+- PMDA case-level source and normalized extracts are not for redistribution and
+  are git-ignored. Public repository artifacts are code, documentation, and
+  aggregate result tables. Before publication, follow the bundled PMDA terms,
+  including advance notification and explicit JADER attribution.
+
+Key interpretation: stomatitis and dry eye were robust across the FAERS active-
+comparator designs. ILD was strong against full FAERS/JADER backgrounds but
+attenuated against breast-cancer active comparators; after ADC exclusion, ROR rose
+without clearing the conservative Bayesian thresholds. Present this as evidence of
+comparator/indication/class sensitivity, not as proof of a geographic difference or
+absence of clinical ILD risk.

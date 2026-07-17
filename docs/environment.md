@@ -72,3 +72,12 @@ State this version range (27.1-28.1), not a single fixed version, in the manuscr
 methods, and note it as a source of potential PT-coding inconsistency across the study
 period if a reaction term was renamed/deprecated/added between MedDRA releases in that
 range.
+
+## JADER source format
+
+The PMDA June 2026 JADER release used for the independent sensitivity analysis is
+CP932-encoded. Its release notes were updated 2026-05-15 and specify MedDRA/J 29.0.
+`scripts/07_jader_comparator.py` reads CP932 directly and writes local UTF-8 cohort
+extracts with English headers while retaining the original Japanese PT and outcome
+values. The English PT fields are curated display translations for terms present in
+the Dato-DXd cohort, not a licensed bilingual MedDRA mapping.

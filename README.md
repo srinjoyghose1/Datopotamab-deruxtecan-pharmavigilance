@@ -3,10 +3,12 @@
 A reproducible pipeline mining the FDA Adverse Event Reporting System (FAERS) for
 disproportionality signals associated with **datopotamab deruxtecan** (Datroway;
 Dato-DXd; DS-1062a), a TROP2-directed antibody-drug conjugate, over the first five
-quarters of its US marketing history (2025Q1-2026Q1). It analyzes spontaneous
-adverse event reports using four disproportionality algorithms, compares recovered
-signals against the current FDA label, and characterizes reporting demographics,
-serious outcomes, subgroup patterns, and time to onset.
+quarters of its US marketing history (2025Q1-2026Q1). The primary analysis is
+supplemented by breast-cancer active-comparator analyses in FAERS and an independent
+sensitivity analysis of the Japanese Adverse Drug Event Report database (JADER). It
+uses four disproportionality algorithms, compares recovered signals against the
+current FDA label, and characterizes reporting demographics, serious outcomes,
+subgroup patterns, and time to onset.
 
 ## Background & rationale
 
@@ -67,6 +69,21 @@ re-run as additional post-marketing quarters accumulate.
   - **Consensus signal** = ROR CI-lower >1 (a≥3) **AND** Evans' PRR/chi-square
     (PRR≥2, chi²≥4, a≥3) **AND** IC025 >0. EB05 >2 is a separate, stricter tier,
     not folded into the base consensus rule.
+- **Comparator sensitivity analysis:** the FAERS cohort was restricted to 196
+  deduplicated Dato-DXd cases with an explicitly linked breast-cancer indication.
+  It was compared with (1) all deduplicated FAERS reports excluding every Dato-DXd
+  report, (2) 6,092 Primary-Suspect breast-cancer reports for capecitabine,
+  eribulin, gemcitabine, vinorelbine, paclitaxel/nab-paclitaxel, carboplatin,
+  sacituzumab govitecan, or trastuzumab deruxtecan, and (3) 3,091 such reports
+  after excluding the two ADC comparators. Indication was linked to the relevant
+  drug using `primaryid + drug_seq`.
+- **JADER sensitivity analysis:** the PMDA June 2026 release contributed 50
+  Dato-DXd suspected-drug report versions with an explicit breast-cancer reason
+  for use. The same three comparator designs were evaluated against 1,037,111
+  non-Dato JADER report versions, 6,458 active-comparator report versions, and
+  5,394 after ADC-class exclusion. FAERS and JADER were analyzed separately and
+  were not pooled because cross-database duplicate cases cannot be identified
+  reliably.
 - **Subgroup analysis:** ROR recomputed within sex and age-band strata for the
   consensus signals, against the same background stratified identically, with
   Haldane-Anscombe continuity correction where any cell is zero.
@@ -98,7 +115,10 @@ them fresh into `data/raw/faers_quarterly/` and `data/raw/faers/`. No manual
 placement is needed for Path B (the path actually used for this analysis). If
 you instead have an OpenVigil FDA / OpenVigil 2.1 export, place it at
 `data/raw/openvigil/raw_data.csv` and `data/raw/openvigil/frequency.csv` before
-running `scripts/03_load_openvigil.py` (Path A).
+running `scripts/03_load_openvigil.py` (Path A). For the JADER sensitivity
+analysis, obtain the PMDA CSV release directly from PMDA and retain its four
+CP932 files together; the repository does not redistribute them. See
+`data/raw/README.md` for the release metadata and PMDA publication obligations.
 
 **3. Run the pipeline, in order.** Candidate selection and the literature
 saturation check (conceptually "phases 1-2") were manual research, not scripts —
@@ -111,10 +131,14 @@ see `docs/candidate_justification.md`. The numbered pipeline itself is:
 | `scripts/04_clean_dedup.py` | FDA-standard dedup, deleted-case removal, builds the analytic dataset | `data/processed/analysis_cases.csv`, `data/processed/case_pt.csv` |
 | `scripts/05_disproportionality.py` | ROR/PRR/BCPNN/EBGM against the whole-database background, consensus signal rule | `outputs/tables/signals_all.csv`, `outputs/tables/signals_significant.csv` |
 | `scripts/06_stratify_tto.py` | Demographics, serious outcomes, subgroup ROR, SOC rollup, Weibull time-to-onset | `outputs/tables/demo_*.csv`, `subgroup_ror_*.csv`, `tto_summary.csv`, etc. |
+| `scripts/07_jader_comparator.py` | Normalizes the PMDA JADER release and runs full-background and active-comparator sensitivity analyses | `data/processed/jader_dato_*.csv`, `outputs/tables/jader_*.csv` |
 | `scripts/07_tables_figures.py` | Renders publication tables (CSV + xlsx) and 300dpi figures | `outputs/tables/T1-T5_*.csv`, `outputs/tables/tables.xlsx`, `outputs/figures/F1-F5_*.png/.svg` |
+| `scripts/08_faers_comparator.py` | Runs breast-cancer-only full-background, active-comparator, and ADC-class-exclusion analyses in FAERS | `outputs/tables/faers_comparator_*.csv`, `outputs/tables/faers_signals_*.csv` |
 
-Each script is runnable independently (`python scripts/0N_*.py`) and prints a
-data-provenance summary as it runs. `scripts/05` and `scripts/06` re-derive the
+Each script is runnable independently and prints a data-provenance summary as it
+runs. JADER requires an explicit source directory, for example
+`python scripts/07_jader_comparator.py --jader-dir /path/to/pmdacasereport202606`.
+`scripts/05` and `scripts/06` re-derive the
 whole-database background from the raw quarterly files, so they take roughly
 20-30 seconds each; `scripts/03`'s download step is network-bound (observed
 ~190 KB/s against FDA's export host).
@@ -124,8 +148,8 @@ whole-database background from the raw quarterly files, so they take roughly
 ```
 data/
   raw/          # git-ignored FAERS/OpenVigil pulls (README.md tracked; see Data notes)
-  processed/    # small, git-tracked analytic datasets (<5MB): analysis_cases.csv, case_pt.csv
-scripts/        # numbered pipeline, 03-07 (see table above)
+  processed/    # small analytic datasets, including normalized UTF-8 JADER cohort extracts
+scripts/        # numbered primary and sensitivity-analysis pipeline, 03-08
 outputs/
   tables/       # all analysis CSVs + T1-T5 publication tables + tables.xlsx
   figures/      # F1-F5, 300dpi PNG + SVG
@@ -260,6 +284,91 @@ Complete outputs are in
 `outputs/tables/faers_signals_comparator_all.csv` and
 `outputs/tables/faers_comparator_cohort_sizes.csv`.
 
+### Cross-database summary and JADER sensitivity analysis
+
+The indication-restricted analyses materially refine the whole-database findings.
+The FAERS breast-cancer Dato-DXd cohort contained 196 cases; the JADER cohort
+contained 50 report versions. Selected results are shown below. A consensus signal
+requires the same ROR, PRR, and approximate BCPNN criteria used in the primary
+analysis.
+
+| Database and comparator | Stomatitis ROR (consensus) | ILD ROR (consensus) | Infusion-reaction ROR (consensus) |
+|---|---:|---:|---:|
+| FAERS, full background | 86.00 (Yes) | 16.17 (Yes) | 8.97 (Yes) |
+| FAERS, active breast comparator | 42.14 (Yes) | 0.96 (No) | 4.01 (No) |
+| FAERS, active comparator excluding SG/T-DXd | 38.67 (Yes) | 3.42 (No) | 2.44 (No) |
+| JADER, full background | 33.34 (No) | 8.49 (Yes) | 29.98 (No) |
+| JADER, active breast comparator | 9.54 (No) | 2.04 (No) | 25.44 (No) |
+| JADER, active comparator excluding SG/T-DXd | 8.22 (No) | 2.95 (No) | 27.50 (No) |
+
+Stomatitis is the most comparator-robust FAERS clinical signal. ILD is strongly
+disproportionate against both full-database backgrounds, but is attenuated against
+breast-cancer active comparators; in FAERS it rises after excluding other ADCs but
+does not clear the conservative IC025/EB05 thresholds. This pattern is compatible
+with substantial indication and class confounding and is more informative than the
+whole-database ROR alone. JADER's small target cohort also produces wide intervals
+and conservative Bayesian lower bounds: only ILD against full JADER met the primary
+consensus definition. Database-specific RORs should not be compared as incidence or
+pooled effect estimates.
+
+Complete results are in `outputs/tables/faers_signals_comparator_all.csv` and
+`outputs/tables/jader_signals_comparator_all.csv`; cohort denominators are in the
+corresponding `*_comparator_cohort_sizes.csv` files.
+
+#### JADER disproportionate-event results
+
+The table below includes every JADER target PT reported in at least three of the
+50 Dato-DXd report versions. Each cell gives ROR (95% CI), followed by whether the
+PT met the complete ROR + PRR + approximate BCPNN consensus definition. A large
+ROR alone is not labeled a consensus signal when its IC025 remains at or below
+zero. Disease progression is retained for transparency but is a disease-course/
+case-context term rather than a drug toxicity.
+
+| JADER PT (Japanese) | Dato reports | Full JADER excluding Dato | Active breast comparator | Active comparator excluding SG/T-DXd |
+|---|---:|---:|---:|---:|
+| Interstitial lung disease (間質性肺疾患) | 14 | 8.49 (4.58-15.75); **Yes** | 2.04 (1.10-3.80); No | 2.95 (1.58-5.50); No |
+| Stomatitis (口内炎) | 6 | 33.34 (14.20-78.29); No | 9.54 (3.97-22.95); No | 8.22 (3.42-19.80); No |
+| Disease progression (疾患進行) | 5 | 40.77 (16.17-102.78); No | 79.62 (25.67-246.93); No | 99.78 (29.38-338.83); No |
+| Infusion related reaction (注入に伴う反応) | 4 | 29.98 (10.79-83.35); No | 25.44 (8.43-76.74); No | 27.50 (8.91-84.91); No |
+| Corneal epitheliopathy (角膜上皮症) | 3 | 590.99 (181.28-1,926.72); No | 206.04 (33.65-1,261.64); No | 344.23 (35.16-3,370.03); No |
+
+#### JADER ILD 2×2 contingency tables
+
+ILD is used for these tables because it was the only JADER PT meeting the complete
+consensus rule under any comparator. Counts are report versions, not confirmed
+unique patients. In each table, `a=14` and `b=36` partition all 50 target report
+versions; `c` and `d` partition every report version in the stated comparator.
+
+**1. Full JADER excluding Dato-DXd (N=1,037,111)**
+
+| Report group | ILD reported | ILD not reported | Total |
+|---|---:|---:|---:|
+| Dato-DXd, breast cancer | 14 (a) | 36 (b) | 50 |
+| Full JADER excluding Dato-DXd | 45,412 (c) | 991,699 (d) | 1,037,111 |
+
+ROR 8.49 (95% CI 4.58-15.75); PRR 6.39; IC025 0.55; EB05 3.88;
+consensus signal: **Yes**.
+
+**2. Active breast-cancer comparator (N=6,458)**
+
+| Report group | ILD reported | ILD not reported | Total |
+|---|---:|---:|---:|
+| Dato-DXd, breast cancer | 14 (a) | 36 (b) | 50 |
+| Active breast-cancer drugs | 1,032 (c) | 5,426 (d) | 6,458 |
+
+ROR 2.04 (95% CI 1.10-3.80); PRR 1.75; IC025 -0.46; EB05 1.09;
+consensus signal: **No**.
+
+**3. Active comparator excluding SG and T-DXd (N=5,394)**
+
+| Report group | ILD reported | ILD not reported | Total |
+|---|---:|---:|---:|
+| Dato-DXd, breast cancer | 14 (a) | 36 (b) | 50 |
+| Active drugs excluding SG/T-DXd | 628 (c) | 4,766 (d) | 5,394 |
+
+ROR 2.95 (95% CI 1.58-5.50); PRR 2.40; IC025 -0.16; EB05 1.49;
+consensus signal: **No**.
+
 ## Discussion & interpretation
 
 Four of the eight consensus signals map directly onto datopotamab deruxtecan's
@@ -389,6 +498,17 @@ implementations here are documented approximations of the full published
 methods (see Methods above), and time-to-onset results describe only the 21.6%
 of the cohort with a computable onset time, not the full 416-case cohort.
 
+The comparator analyses add further constraints. The breast-cancer restriction
+depends on an explicitly reported indication and therefore excludes cases with a
+missing or nonspecific indication; it is not a complete census of breast-cancer
+exposure. Active comparators differ in treatment line, biomarker eligibility,
+market tenure, and toxicity profile. JADER counts are report versions rather than
+confirmed unique patients, its Japanese PT display translations are curated rather
+than a licensed bilingual MedDRA mapping, and its reporting system differs from
+FAERS. Finally, Japanese-origin FAERS reports were retained in the primary FAERS
+analysis, but FAERS and JADER were not pooled; without a shared case identifier,
+removing or deduplicating presumed overlaps would introduce unverifiable assumptions.
+
 ## References
 
 Full reference list in [`docs/manuscript.md`](docs/manuscript.md#references).
@@ -413,6 +533,15 @@ tracked). To re-download: FAERS quarterly ASCII files are published at
 `faers_ascii_2025q1.zip`); `scripts/03_pull_faers.py` automates this download,
 extraction, and filtering end to end. See `data/raw/README.md` for the exact
 quarters, query strings, and record counts from the pull this analysis used.
+
+The raw PMDA JADER June 2026 files are likewise not committed. They are CP932
+encoded and are read directly by `scripts/07_jader_comparator.py`; the generated
+Dato-DXd cohort extracts in `data/processed/` are UTF-8 with English headers while
+retaining the authoritative Japanese PT and outcome fields. Those case-level
+extracts are also git-ignored. Before publishing JADER-derived results, users must
+review the terms bundled with their release; the supplied June 2026 terms require
+advance notification to PMDA and explicit attribution to the PMDA Japanese Adverse
+Drug Event Report database (JADER).
 
 MedDRA version is **27.1 to 28.1** across the study window (not a single fixed
 version) — see [Methods](#methods-at-a-glance) above and `docs/environment.md`
