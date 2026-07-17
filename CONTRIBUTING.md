@@ -16,6 +16,16 @@ python scripts/06_stratify_tto.py
 python scripts/07_tables_figures.py
 ```
 
+The editable manuscript source is `docs/manuscript.md`. Any code change that
+alters a reported result must update the manuscript where applicable and
+regenerate the tracked review copy in the same commit with:
+
+```bash
+pandoc docs/manuscript.md -o docs/manuscript_working_draft.docx
+```
+
+Do not edit the DOCX directly and then treat it as the source of truth.
+
 Each script is idempotent and prints a data-provenance summary as it runs. See
 the table in `README.md` ("How to reproduce") for what each one consumes and
 produces.

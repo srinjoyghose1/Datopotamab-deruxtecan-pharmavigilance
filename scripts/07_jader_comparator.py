@@ -5,7 +5,9 @@ Uses PMDA's full JADER CSV release (CP932 encoding) and treats one
 a cross-reporter master case identifier, so duplicate reports can remain.
 
 The target cohort is datopotamab deruxtecan as a suspected drug with an explicit
-breast-cancer reason for use. Three case-level comparators are evaluated:
+breast-cancer reason for use. Explicitly discordant TNBC, HER2-positive, and
+hormone-receptor-negative reasons are excluded at report-version level while
+nonspecific breast-cancer reasons remain eligible. Three comparators are evaluated:
 
 1. all JADER report versions excluding target-cohort reports;
 2. breast-cancer reports for the prespecified active comparators;
@@ -21,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -99,10 +102,38 @@ EXCLUDED_ADC_COMPARATORS = {
     "sacituzumab_govitecan",
     "trastuzumab_deruxtecan",
 }
+DISCORDANT_INDICATION_TERMS = (
+    "triple negative",
+    "triple-negative",
+    "トリプルネガティブ",
+    "三重陰性",
+    "her2 positive",
+    "her2-positive",
+    "her2陽性",
+    "hormone receptor negative",
+    "hormone receptor-negative",
+    "hr negative",
+    "hr-negative",
+    "ホルモン受容体陰性",
+)
 
 
 def key_frame(df: pd.DataFrame) -> pd.Series:
     return df["識別番号"].astype(str) + "|" + df["報告回数"].astype(str)
+
+
+def normalize_indication(value: str) -> str:
+    return unicodedata.normalize("NFKC", value).casefold()
+
+
+def indication_masks(reason: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Return breast-cancer and explicitly discordant indication masks."""
+    normalized = reason.fillna("").map(normalize_indication)
+    breast = normalized.str.contains("乳癌", regex=False)
+    discordant = pd.Series(False, index=reason.index)
+    for term in DISCORDANT_INDICATION_TERMS:
+        discordant |= normalized.str.contains(normalize_indication(term), regex=False)
+    return breast, discordant
 
 
 def ror_ci(a: int, b: int, c: int, d: int) -> tuple[float, float, float]:
@@ -156,6 +187,8 @@ def load_drug_sets(drug_path: Path) -> tuple[set[str], set[str], set[str], pd.Da
     target_keys: set[str] = set()
     active_keys: set[str] = set()
     excluded_adc_keys: set[str] = set()
+    discordant_target_keys: set[str] = set()
+    discordant_active_keys: set[str] = set()
     target_rows: list[pd.DataFrame] = []
     columns = ["識別番号", "報告回数", "医薬品の関与", "医薬品（一般名）", "使用理由"]
 
@@ -164,21 +197,27 @@ def load_drug_sets(drug_path: Path) -> tuple[set[str], set[str], set[str], pd.Da
         suspect["key"] = key_frame(suspect)
         name = suspect["医薬品（一般名）"].fillna("")
         reason = suspect["使用理由"].fillna("")
-        breast = reason.str.contains("乳癌", regex=False)
+        breast, discordant = indication_masks(reason)
 
         dato = name.str.contains("ダトポタマブ", regex=False)
-        target = suspect[dato & breast]
+        target = suspect[dato & breast & ~discordant]
         target_keys.update(target["key"])
+        discordant_target_keys.update(suspect.loc[dato & breast & discordant, "key"])
         target_rows.append(target)
 
         for label, term in ACTIVE_COMPARATORS.items():
             matched = name.str.contains(term, regex=False)
-            matched_keys = set(suspect.loc[matched & breast, "key"])
+            matched_keys = set(suspect.loc[matched & breast & ~discordant, "key"])
             active_keys.update(matched_keys)
+            discordant_active_keys.update(suspect.loc[matched & breast & discordant, "key"])
             if label in EXCLUDED_ADC_COMPARATORS:
-                excluded_adc_keys.update(set(suspect.loc[matched, "key"]))
+                excluded_adc_keys.update(matched_keys)
 
     target_df = pd.concat(target_rows, ignore_index=True)
+    target_keys -= discordant_target_keys
+    active_keys -= discordant_active_keys
+    excluded_adc_keys &= active_keys
+    target_df = target_df[target_df["key"].isin(target_keys)].copy()
     if len(target_keys) != len(target_df):
         raise ValueError("Target drug has multiple suspected-drug rows per report version; inspect before proceeding.")
     if target_df.empty:
@@ -295,7 +334,10 @@ def calculate_signals(
     out["prr_signal"] = (out["a_dato_cases"] >= 3) & (out["prr"] >= 2) & (out["chi2_yates"] >= 4)
     out["bcpnn_signal"] = (out["a_dato_cases"] >= 3) & (out["ic025"] > 0)
     out["mgps_signal"] = (out["a_dato_cases"] >= 3) & (out["eb05"] >= 2)
-    out["consensus_signal"] = out[["ror_signal", "prr_signal", "bcpnn_signal"]].all(axis=1)
+    out["consensus_signal"] = out[["ror_signal", "bcpnn_signal"]].all(axis=1)
+    out["four_algorithm_signal"] = out[
+        ["ror_signal", "prr_signal", "bcpnn_signal", "mgps_signal"]
+    ].all(axis=1)
     return out.sort_values(["consensus_signal", "ror", "a_dato_cases"], ascending=[False, False, False])
 
 

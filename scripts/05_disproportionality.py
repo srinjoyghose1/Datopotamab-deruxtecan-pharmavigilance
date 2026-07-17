@@ -60,12 +60,12 @@ CHI2_THRESHOLD = 4.0
 IC025_THRESHOLD = 0.0
 EB05_THRESHOLD = 2.0
 
-# Primary consensus signal = ALL of these boolean columns True.
-# EB05 is deliberately NOT in the base consensus -- it's reported as a stricter,
-# separate tier (see `strict_signal` in the output), consistent with EBGM/EB05
-# conventionally being a higher bar than ROR/PRR/BCPNN in the literature.
-CONSENSUS_CRITERIA = ["ror_signal", "prr_signal", "bcpnn_signal"]
-STRICT_CRITERIA = CONSENSUS_CRITERIA + ["mgps_signal"]
+# Primary signal rule: frequentist precision (ROR lower 95% CI >1, a>=3)
+# plus conservative shrinkage (IC025>0). PRR and the single-component EBGM
+# approximation remain computed for sensitivity analysis, but are not treated
+# as independent confirmations of the same 2x2 table.
+CONSENSUS_CRITERIA = ["ror_signal", "bcpnn_signal"]
+FOUR_ALGORITHM_CRITERIA = ["ror_signal", "prr_signal", "bcpnn_signal", "mgps_signal"]
 
 SANITY_CHECK_PTS = ["Interstitial lung disease", "Pneumonitis", "Stomatitis", "Nausea"]
 
@@ -289,7 +289,7 @@ def main():
 
     # --- consensus ---
     df["consensus_signal"] = df[CONSENSUS_CRITERIA].all(axis=1)
-    df["strict_signal"] = df[STRICT_CRITERIA].all(axis=1)
+    df["four_algorithm_signal"] = df[FOUR_ALGORITHM_CRITERIA].all(axis=1)
 
     # --- clinical vs. administrative-artifact classification ---
     df["signal_category"] = df["pt"].apply(
@@ -310,7 +310,7 @@ def main():
     print(f"Passing BCPNN criterion (IC025 > {IC025_THRESHOLD}): {df['bcpnn_signal'].sum()}")
     print(f"Passing MGPS criterion (EB05 > {EB05_THRESHOLD}): {df['mgps_signal'].sum()}")
     print(f"Consensus signal ({' AND '.join(CONSENSUS_CRITERIA)}): {df['consensus_signal'].sum()}")
-    print(f"Strict signal (consensus AND mgps_signal): {df['strict_signal'].sum()}")
+    print(f"Four-algorithm sensitivity signal: {df['four_algorithm_signal'].sum()}")
     consensus_by_category = signals_significant["signal_category"].value_counts()
     print(f"Of the {len(signals_significant)} consensus signals: "
           f"{consensus_by_category.get('Clinical AE', 0)} Clinical AE, "

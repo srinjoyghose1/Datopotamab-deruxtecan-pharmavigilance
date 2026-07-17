@@ -1,5 +1,9 @@
 cohort,n_cases
-dato_breast_all_subtypes,196
+dato_breast_hr_compatible,182
 full_faers_excluding_all_dato,1809719
-active_breast_comparator,6092
-active_breast_comparator_class_exclusion,3091
+trial_aligned_chemo,940
+trastuzumab_deruxtecan_alone,1630
+sacituzumab_govitecan_alone,348
+expanded_chemo,2129
+active_breast_comparator,4107
+active_breast_comparator_class_exclusion,2129

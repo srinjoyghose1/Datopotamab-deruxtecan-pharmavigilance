@@ -66,22 +66,23 @@ re-run as additional post-marketing quarters accumulate.
   - **EBGM/EB05** — a single-component Gamma-Poisson shrinker fit by method of
     moments on the drug's own within-drug PT ratio distribution, a simplified
     analogue of the full two-component MGPS mixture.
-  - **Consensus signal** = ROR CI-lower >1 (a≥3) **AND** Evans' PRR/chi-square
-    (PRR≥2, chi²≥4, a≥3) **AND** IC025 >0. EB05 >2 is a separate, stricter tier,
-    not folded into the base consensus rule.
-- **Comparator sensitivity analysis:** the FAERS cohort was restricted to 196
-  deduplicated Dato-DXd cases with an explicitly linked breast-cancer indication.
+  - **Primary consensus signal** = ROR CI-lower >1 (a≥3) **AND** IC025 >0.
+    Evans' PRR/chi-square and EB05 >2 are reported as four-algorithm sensitivity
+    measures, not additional requirements in the primary rule.
+- **Comparator hierarchy:** the FAERS cohort was restricted to 182
+  deduplicated Dato-DXd cases with an explicitly linked breast-cancer indication
+  after excluding TNBC, HER2-positive, and HR-negative indications at case level;
+  nonspecific breast-cancer indications were retained to preserve power.
   It was compared with (1) all deduplicated FAERS reports excluding every Dato-DXd
-  report, (2) 6,092 Primary-Suspect breast-cancer reports for capecitabine,
-  eribulin, gemcitabine, vinorelbine, paclitaxel/nab-paclitaxel, carboplatin,
-  sacituzumab govitecan, or trastuzumab deruxtecan, and (3) 3,091 such reports
-  after excluding the two ADC comparators. Indication was linked to the relevant
-  drug using `primaryid + drug_seq`.
+  report, (2) a 940-report trial-aligned chemotherapy pool of capecitabine,
+  eribulin, vinorelbine, and gemcitabine, and (3) individual trastuzumab deruxtecan
+  (N=1,630) and sacituzumab govitecan (N=348) cohorts. Indication was linked to
+  the relevant drug using `primaryid + drug_seq`.
 - **JADER sensitivity analysis:** the PMDA June 2026 release contributed 50
   Dato-DXd suspected-drug report versions with an explicit breast-cancer reason
   for use. The same three comparator designs were evaluated against 1,037,111
-  non-Dato JADER report versions, 6,458 active-comparator report versions, and
-  5,394 after ADC-class exclusion. FAERS and JADER were analyzed separately and
+  non-Dato JADER report versions, 4,541 indication-filtered active-comparator report versions, and
+  4,158 after ADC-class exclusion. FAERS and JADER were analyzed separately and
   were not pooled because cross-database duplicate cases cannot be identified
   reliably.
 - **Subgroup analysis:** ROR recomputed within sex and age-band strata for the
@@ -132,8 +133,8 @@ see `docs/candidate_justification.md`. The numbered pipeline itself is:
 | `scripts/05_disproportionality.py` | ROR/PRR/BCPNN/EBGM against the whole-database background, consensus signal rule | `outputs/tables/signals_all.csv`, `outputs/tables/signals_significant.csv` |
 | `scripts/06_stratify_tto.py` | Demographics, serious outcomes, subgroup ROR, SOC rollup, Weibull time-to-onset | `outputs/tables/demo_*.csv`, `subgroup_ror_*.csv`, `tto_summary.csv`, etc. |
 | `scripts/07_jader_comparator.py` | Normalizes the PMDA JADER release and runs full-background and active-comparator sensitivity analyses | `data/processed/jader_dato_*.csv`, `outputs/tables/jader_*.csv` |
-| `scripts/07_tables_figures.py` | Renders publication tables (CSV + xlsx) and 300dpi figures | `outputs/tables/T1-T5_*.csv`, `outputs/tables/tables.xlsx`, `outputs/figures/F1-F5_*.png/.svg` |
-| `scripts/08_faers_comparator.py` | Runs breast-cancer-only full-background, active-comparator, and ADC-class-exclusion analyses in FAERS | `outputs/tables/faers_comparator_*.csv`, `outputs/tables/faers_signals_*.csv` |
+| `scripts/07_tables_figures.py` | Renders publication tables (CSV + xlsx) and 300dpi figures | `outputs/tables/T1-T5_*.csv`, `outputs/tables/tables.xlsx`, `outputs/figures/F1-F8_*.png/.svg` |
+| `scripts/08_faers_comparator.py` | Runs the FAERS comparator hierarchy and leave-one-drug-out analysis | `outputs/tables/faers_comparator_*.csv`, `outputs/tables/faers_signals_*.csv` |
 
 Each script is runnable independently and prints a data-provenance summary as it
 runs. JADER requires an explicit source directory, for example
@@ -152,11 +153,13 @@ data/
 scripts/        # numbered primary and sensitivity-analysis pipeline, 03-08
 outputs/
   tables/       # all analysis CSVs + T1-T5 publication tables + tables.xlsx
-  figures/      # F1-F5, 300dpi PNG + SVG
+  figures/      # F1-F8, 300dpi PNG + SVG
 docs/
   candidate_justification.md   # drug selection + literature saturation check
   environment.md               # pinned package versions + MedDRA version notes
   manuscript.md                # full manuscript draft (Methods/Results/Discussion/Limitations)
+  supplemental_comparator_analyses.md  # demoted comparators + algorithm sensitivity
+  bias_inventory.md            # design risks, responses, and residual limitations
 refs/           # the two reference papers this project's voice/format follows
 CLAUDE.md       # project rules, standing caveats, and a running methodological decisions log
 ```
@@ -167,28 +170,28 @@ After FDA-standard deduplication, **416 unique cases** with datopotamab
 deruxtecan as Primary Suspect were analyzed. Reporters were predominantly female
 (76.7%, n=319); 54.1% of cases (n=225) carried a FAERS serious-outcome flag,
 including 102 deaths (24.5%). Of **284 distinct PTs** tested against the
-whole-database background, **8 met the consensus signal rule** (7 also met the
-stricter EB05>2 tier) — split below by whether the PT is a genuine clinical
+whole-database background, **8 met the primary ROR+IC signal rule** — split
+below by whether the PT is a genuine clinical
 adverse event or a FAERS administrative/case-context code, not mixed into one
 ROR-ranked list (see Discussion for why that split matters):
 
 **Clinical AE signals (4)** — map directly onto the current label:
 
-| PT | a | ROR (95% CI) | PRR | IC (IC025) | EBGM (EB05) | Strict signal |
-|---|---|---|---|---|---|---|
-| Stomatitis | 64 | 59.12 (45.23-77.26) | 50.18 | 5.17 (3.03) | 49.20 (39.85) | Yes |
-| Interstitial lung disease | 16 | 15.20 (9.21-25.07) | 14.65 | 3.37 (1.03) | 14.18 (9.18) | Yes |
-| Dry eye | 13 | 7.63 (4.39-13.26) | 7.42 | 2.58 (0.55) | 7.15 (4.40) | Yes |
-| Infusion related reaction | 14 | 7.34 (4.31-12.51) | 7.13 | 2.56 (0.61) | 6.88 (4.32) | Yes |
+| PT | a | ROR (95% CI) | IC (IC025) |
+|---|---:|---|---|
+| Stomatitis | 64 | 59.12 (45.23-77.26) | 5.17 (3.03) |
+| Interstitial lung disease | 16 | 15.20 (9.21-25.07) | 3.37 (1.03) |
+| Dry eye | 13 | 7.63 (4.39-13.26) | 2.58 (0.55) |
+| Infusion related reaction | 14 | 7.34 (4.31-12.51) | 2.56 (0.61) |
 
 **Administrative/case-context signals (4)** — statistically disproportionate but not adverse events:
 
-| PT | a | ROR (95% CI) | PRR | IC (IC025) | EBGM (EB05) | Strict signal |
-|---|---|---|---|---|---|---|
-| Disease progression | 86 | 44.12 (34.78-55.98) | 35.21 | 4.87 (3.20) | 34.73 (28.97) | Yes |
-| Prescribed underdose | 9 | 19.29 (9.95-37.40) | 18.90 | 3.28 (0.28) | 17.82 (9.86) | Yes |
-| No adverse event | 42 | 10.23 (7.43-14.08) | 9.30 | 3.08 (1.75) | 9.18 (7.07) | Yes |
-| Off label use | 66 | 2.56 (1.97-3.33) | 2.31 | 1.19 (0.57) | 2.30 (1.87) | No (EB05<2) |
+| PT | a | ROR (95% CI) | IC (IC025) |
+|---|---:|---|---|
+| Disease progression | 86 | 44.12 (34.78-55.98) | 4.87 (3.20) |
+| Prescribed underdose | 9 | 19.29 (9.95-37.40) | 3.28 (0.28) |
+| No adverse event | 42 | 10.23 (7.43-14.08) | 3.08 (1.75) |
+| Off label use | 66 | 2.56 (1.97-3.33) | 1.19 (0.57) |
 
 *a = case count; full intervals and all 284 tested PTs, including the
 "Signal category" column that drives this split, are in
@@ -201,173 +204,54 @@ Time to onset was computable for 90/416 cases (21.6%); median 22.0 days (IQR
 hazard). System Organ Class rollup was not possible (no licensed MedDRA
 crosswalk); all 284 PTs fall into a single unmapped bucket. Full tables:
 `outputs/tables/T1_demographics.csv` through `T5_time_to_onset.csv` (and
-`tables.xlsx`). Full figures: `outputs/figures/F1`-`F5` (300dpi PNG + SVG) — F2
+`tables.xlsx`). Full figures: `outputs/figures/F1`-`F8` (300dpi PNG + SVG) — F2
 and F3 color/group by this same clinical-vs-administrative split, and F5 (the
 subgroup heatmap) is restricted to the 4 clinical AE signals only, since a
 sex/age breakdown of "Off label use" isn't a clinically meaningful question.
 
-### FAERS breast-cancer comparator analysis
+### Primary FAERS comparator hierarchy
 
-A sensitivity analysis restricted the Dato-DXd target to **196 deduplicated
-cases with an explicitly linked breast-cancer indication**. DRUG and INDI were
-joined using `primaryid + drug_seq`, preventing an indication belonging to a
-different medication from qualifying the case. All explicitly reported breast-
-cancer subtypes were included. Three comparator cohorts were evaluated:
+The comparator analysis uses **182** Dato-DXd Primary-Suspect reports with an
+explicitly linked breast-cancer indication compatible with HR-positive/HER2-negative
+disease. Explicit TNBC, HER2-positive, and hormone-receptor-negative indications
+were excluded. Nonspecific, metastatic/recurrent, HER2-low, and incompletely
+specified breast-cancer terms were retained to preserve sample size.
 
-| Cohort | N cases |
-|---|---:|
-| Dato-DXd, breast cancer | 196 |
-| Full FAERS excluding all 416 Dato-DXd cases | 1,809,719 |
-| Active breast-cancer comparator | 6,092 |
-| Active comparator excluding sacituzumab govitecan and trastuzumab deruxtecan | 3,091 |
+| Tier | Comparator | N reports | Purpose |
+|---|---|---:|---|
+| 1 | Full FAERS excluding all Dato-DXd reports | 1,809,719 | Broad screening background |
+| 2 | Trial-aligned chemotherapy: capecitabine, eribulin, vinorelbine, gemcitabine | 940 | Primary active comparator |
+| 3a | Trastuzumab deruxtecan alone | 1,630 | Individual ADC context |
+| 3b | Sacituzumab govitecan alone | 348 | Individual TROP2-ADC context |
 
-The active comparator included Primary-Suspect breast-cancer reports for
-capecitabine, eribulin, gemcitabine, vinorelbine, paclitaxel/nab-paclitaxel,
-carboplatin, sacituzumab govitecan, and trastuzumab deruxtecan. The following
-table contains every PT that met the complete ROR + PRR + approximate BCPNN
-consensus definition under at least one comparator. Each result is ROR (95% CI),
-followed by consensus status.
+The primary signal rule is **ROR lower 95% CI >1 with at least three Dato-DXd
+cases AND IC025 >0**. PRR/chi-square and approximate EBGM/EB05 are retained as
+four-algorithm sensitivity measures, not additional votes in the primary rule.
+ROR and PRR are correlated transformations of the same 2×2 table, while the local
+EBGM is a simplified approximation rather than production MGPS.
 
-| PT | Category | Dato cases | Full FAERS excluding Dato | Active breast comparator | Active comparator excluding SG/T-DXd |
-|---|---|---:|---:|---:|---:|
-| Stomatitis | Clinical AE | 41 | 86.00 (60.90-121.46); **Yes** | 42.14 (26.36-67.38); **Yes** | 38.67 (22.31-67.03); **Yes** |
-| Interstitial lung disease | Clinical AE | 8 | 16.17 (7.96-32.83); **Yes** | 0.96 (0.47-1.97); No | 3.42 (1.57-7.43); No |
-| Dry eye | Clinical AE | 9 | 11.38 (5.83-22.22); **Yes** | 15.38 (6.87-34.45); **Yes** | 10.58 (4.52-24.76); **Yes** |
-| Infusion related reaction | Clinical AE | 8 | 8.97 (4.42-18.20); **Yes** | 4.01 (1.89-8.48); No | 2.44 (1.14-5.20); No |
-| Disease progression | Case context | 78 | 111.92 (84.02-149.07); **Yes** | 8.75 (6.46-11.84); **Yes** | 26.58 (18.43-38.35); **Yes** |
-| Prescribed underdose | Administrative | 9 | 41.99 (21.48-82.08); **Yes** | 73.25 (22.36-240.01); **Yes** | 148.72 (18.74-1,180.07); **Yes** |
-| No adverse event | Administrative | 9 | 4.38 (2.25-8.56); No | 19.50 (8.43-45.13); **Yes** | 148.72 (18.74-1,180.07); **Yes** |
-| Off label use | Administrative | 26 | 2.08 (1.37-3.14); No | 2.89 (1.88-4.44); **Yes** | 1.73 (1.12-2.67); No |
+Among clinical AESIs, **stomatitis was the only primary signal under every
+comparator tier**: ROR 91.59 (95% CI 64.42-130.21) against full FAERS, 26.20
+(12.81-53.56) against trial-aligned chemotherapy, 114.51 (40.39-324.63) against
+T-DXd, and 97.75 (13.31-717.88) against SG. ILD did not meet the combined ROR+IC
+rule in any primary tier. Dry eye and infusion-related reaction met it only
+against full FAERS. These are reporting associations, not incidence estimates or
+causal effects.
 
-Administrative and case-context terms are displayed for transparency but are not
-interpreted as adverse drug reactions. Among clinical events, stomatitis and dry
-eye were robust across comparator definitions. ILD and infusion-related reaction
-were strongly disproportionate against full FAERS but did not meet the complete
-consensus rule against the active comparators.
+The four trial-aligned PT signals were subjected to leave-one-drug-out analysis.
+Stomatitis, Disease progression, and Off label use remained positive after every
+deletion. Prescribed underdose, a nine-case administrative term, lost IC025
+positivity after removing capecitabine or eribulin. See Figure 8 and
+`outputs/tables/faers_signals_leave_one_out.csv`.
 
-#### ILD 2×2 contingency tables
-
-These tables show the actual case counts underlying the ILD estimates. Each table
-accounts for all 196 Dato-DXd breast-cancer cases and every case in its comparator.
-
-**1. Full FAERS excluding all Dato-DXd cases (N=1,809,719)**
-
-| Report group | ILD reported | ILD not reported | Total |
-|---|---:|---:|---:|
-| Dato-DXd, breast cancer | 8 (a) | 188 (b) | 196 |
-| Full FAERS excluding Dato-DXd | 4,750 (c) | 1,804,969 (d) | 1,809,719 |
-
-ROR 16.17 (95% CI 7.96-32.83); PRR 15.55; IC025 0.10; EB05 7.78;
-consensus signal: **Yes**.
-
-**2. Active breast-cancer comparator (N=6,092)**
-
-| Report group | ILD reported | ILD not reported | Total |
-|---|---:|---:|---:|
-| Dato-DXd, breast cancer | 8 (a) | 188 (b) | 196 |
-| Active breast-cancer drugs | 259 (c) | 5,833 (d) | 6,092 |
-
-ROR 0.96 (95% CI 0.47-1.97); PRR 0.96; IC025 -1.41; EB05 0.53;
-consensus signal: **No**.
-
-**3. Active comparator excluding SG and T-DXd (N=3,091)**
-
-| Report group | ILD reported | ILD not reported | Total |
-|---|---:|---:|---:|
-| Dato-DXd, breast cancer | 8 (a) | 188 (b) | 196 |
-| Active drugs excluding SG/T-DXd | 38 (c) | 3,053 (d) | 3,091 |
-
-ROR 3.42 (95% CI 1.57-7.43); PRR 3.32; IC025 -0.46; EB05 1.66;
-consensus signal: **No**.
-
-Complete outputs are in
-`outputs/tables/faers_signals_comparator_all.csv` and
-`outputs/tables/faers_comparator_cohort_sizes.csv`.
-
-### Cross-database summary and JADER sensitivity analysis
-
-The indication-restricted analyses materially refine the whole-database findings.
-The FAERS breast-cancer Dato-DXd cohort contained 196 cases; the JADER cohort
-contained 50 report versions. Selected results are shown below. A consensus signal
-requires the same ROR, PRR, and approximate BCPNN criteria used in the primary
-analysis.
-
-| Database and comparator | Stomatitis ROR (consensus) | ILD ROR (consensus) | Infusion-reaction ROR (consensus) |
-|---|---:|---:|---:|
-| FAERS, full background | 86.00 (Yes) | 16.17 (Yes) | 8.97 (Yes) |
-| FAERS, active breast comparator | 42.14 (Yes) | 0.96 (No) | 4.01 (No) |
-| FAERS, active comparator excluding SG/T-DXd | 38.67 (Yes) | 3.42 (No) | 2.44 (No) |
-| JADER, full background | 33.34 (No) | 8.49 (Yes) | 29.98 (No) |
-| JADER, active breast comparator | 9.54 (No) | 2.04 (No) | 25.44 (No) |
-| JADER, active comparator excluding SG/T-DXd | 8.22 (No) | 2.95 (No) | 27.50 (No) |
-
-Stomatitis is the most comparator-robust FAERS clinical signal. ILD is strongly
-disproportionate against both full-database backgrounds, but is attenuated against
-breast-cancer active comparators; in FAERS it rises after excluding other ADCs but
-does not clear the conservative IC025/EB05 thresholds. This pattern is compatible
-with substantial indication and class confounding and is more informative than the
-whole-database ROR alone. JADER's small target cohort also produces wide intervals
-and conservative Bayesian lower bounds: only ILD against full JADER met the primary
-consensus definition. Database-specific RORs should not be compared as incidence or
-pooled effect estimates.
-
-Complete results are in `outputs/tables/faers_signals_comparator_all.csv` and
-`outputs/tables/jader_signals_comparator_all.csv`; cohort denominators are in the
-corresponding `*_comparator_cohort_sizes.csv` files.
-
-#### JADER disproportionate-event results
-
-The table below includes every JADER target PT reported in at least three of the
-50 Dato-DXd report versions. Each cell gives ROR (95% CI), followed by whether the
-PT met the complete ROR + PRR + approximate BCPNN consensus definition. A large
-ROR alone is not labeled a consensus signal when its IC025 remains at or below
-zero. Disease progression is retained for transparency but is a disease-course/
-case-context term rather than a drug toxicity.
-
-| JADER PT (Japanese) | Dato reports | Full JADER excluding Dato | Active breast comparator | Active comparator excluding SG/T-DXd |
-|---|---:|---:|---:|---:|
-| Interstitial lung disease (間質性肺疾患) | 14 | 8.49 (4.58-15.75); **Yes** | 2.04 (1.10-3.80); No | 2.95 (1.58-5.50); No |
-| Stomatitis (口内炎) | 6 | 33.34 (14.20-78.29); No | 9.54 (3.97-22.95); No | 8.22 (3.42-19.80); No |
-| Disease progression (疾患進行) | 5 | 40.77 (16.17-102.78); No | 79.62 (25.67-246.93); No | 99.78 (29.38-338.83); No |
-| Infusion related reaction (注入に伴う反応) | 4 | 29.98 (10.79-83.35); No | 25.44 (8.43-76.74); No | 27.50 (8.91-84.91); No |
-| Corneal epitheliopathy (角膜上皮症) | 3 | 590.99 (181.28-1,926.72); No | 206.04 (33.65-1,261.64); No | 344.23 (35.16-3,370.03); No |
-
-#### JADER ILD 2×2 contingency tables
-
-ILD is used for these tables because it was the only JADER PT meeting the complete
-consensus rule under any comparator. Counts are report versions, not confirmed
-unique patients. In each table, `a=14` and `b=36` partition all 50 target report
-versions; `c` and `d` partition every report version in the stated comparator.
-
-**1. Full JADER excluding Dato-DXd (N=1,037,111)**
-
-| Report group | ILD reported | ILD not reported | Total |
-|---|---:|---:|---:|
-| Dato-DXd, breast cancer | 14 (a) | 36 (b) | 50 |
-| Full JADER excluding Dato-DXd | 45,412 (c) | 991,699 (d) | 1,037,111 |
-
-ROR 8.49 (95% CI 4.58-15.75); PRR 6.39; IC025 0.55; EB05 3.88;
-consensus signal: **Yes**.
-
-**2. Active breast-cancer comparator (N=6,458)**
-
-| Report group | ILD reported | ILD not reported | Total |
-|---|---:|---:|---:|
-| Dato-DXd, breast cancer | 14 (a) | 36 (b) | 50 |
-| Active breast-cancer drugs | 1,032 (c) | 5,426 (d) | 6,458 |
-
-ROR 2.04 (95% CI 1.10-3.80); PRR 1.75; IC025 -0.46; EB05 1.09;
-consensus signal: **No**.
-
-**3. Active comparator excluding SG and T-DXd (N=5,394)**
-
-| Report group | ILD reported | ILD not reported | Total |
-|---|---:|---:|---:|
-| Dato-DXd, breast cancer | 14 (a) | 36 (b) | 50 |
-| Active drugs excluding SG/T-DXd | 628 (c) | 4,766 (d) | 5,394 |
-
-ROR 2.95 (95% CI 1.58-5.50); PRR 2.40; IC025 -0.16; EB05 1.49;
-consensus signal: **No**.
+T-DXd and SG are intentionally analyzed separately rather than pooled: their
+targets, payloads, treatment settings, market tenure, utilization, and toxicity
+profiles differ, and pooling can hide drug-specific masking. The former pooled
+nine-drug and expanded chemotherapy analyses, exact ILD 2×2 tables, complete
+four-algorithm results, literature rationale, and JADER details are retained in
+[`docs/supplemental_comparator_analyses.md`](docs/supplemental_comparator_analyses.md).
+The complete machine-readable FAERS results are in
+`outputs/tables/faers_signals_comparator_all.csv`.
 
 ## Discussion & interpretation
 
@@ -446,19 +330,17 @@ that map directly onto the eventual label (Discussion, above).
 
 **But this speed exposes a real design problem, not just a benefit.** This
 study's own results show it directly: "Pneumonitis" (a=6) passed ROR and Evans'
-PRR/chi-square cleanly but failed the approximate BCPNN criterion purely
-because its variance is dominated by a tiny expected count at low N — a known
-conservative property of the approximation, worse the earlier you look. A
-surveillance system that demands full four-algorithm consensus from day one
-will systematically under-call real signals during exactly the window when
-catching them early matters most.
+PRR/chi-square but failed the approximate IC025 criterion because the lower
+bound remains conservative at low counts. The primary ROR+IC rule therefore
+prioritizes specificity, while the individual algorithm columns remain visible
+for clinical review of plausible low-count terms.
 
 **The practical implication is a tiered alarm, not a single threshold:**
 
-1. **Watch list** — ROR + Evans' PRR/chi-square alone (cheap, stable even at
-   low N) routes a PT to human review, not automatic action.
-2. **Priority signal** — full four-algorithm consensus (or the stricter EB05
-   tier) escalates faster and with more confidence.
+1. **Watch list** — a clinically plausible term meeting any strong frequentist
+   or shrinkage criterion routes to human review, not automatic action.
+2. **Primary statistical signal** — ROR lower CI >1 with at least three cases
+   and IC025 >0; four-algorithm agreement is reported as sensitivity evidence.
 3. **Administrative-artifact triage runs before either tier.** Four of this
    study's eight consensus "signals" were FAERS coding noise (Disease
    progression, Off label use, No adverse event, Prescribed underdose), not
@@ -500,7 +382,9 @@ of the cohort with a computable onset time, not the full 416-case cohort.
 
 The comparator analyses add further constraints. The breast-cancer restriction
 depends on an explicitly reported indication and therefore excludes cases with a
-missing or nonspecific indication; it is not a complete census of breast-cancer
+missing or non-breast indication as well as explicitly discordant TNBC,
+HER2-positive, or HR-negative coding; nonspecific breast-cancer terms are retained,
+so it is not a receptor-status-confirmed census of breast-cancer
 exposure. Active comparators differ in treatment line, biomarker eligibility,
 market tenure, and toxicity profile. JADER counts are report versions rather than
 confirmed unique patients, its Japanese PT display translations are curated rather

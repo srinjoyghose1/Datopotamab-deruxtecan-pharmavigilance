@@ -20,6 +20,7 @@ from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LogLocator, NullFormatter
 import numpy as np
 import pandas as pd
 from openpyxl import Workbook
@@ -32,6 +33,7 @@ TABLES_DIR = REPO_ROOT / "outputs" / "tables"
 FIGURES_DIR = REPO_ROOT / "outputs" / "figures"
 
 N_CASES = 416
+N_COMPARATOR_TARGET = 182
 DATA_WINDOW = "2025Q1-2026Q1"
 WINDOW_NOTE = f"N={N_CASES} cases, datopotamab deruxtecan Primary Suspect, FAERS {DATA_WINDOW}"
 
@@ -169,14 +171,14 @@ def build_table1() -> pd.DataFrame:
 def build_table2(signals_all: pd.DataFrame) -> pd.DataFrame:
     top = signals_all.sort_values("a", ascending=False).head(15).copy()
     top["label_listed"] = top["pt"].isin(LABEL_LISTED_PTS).map({True: "Y", False: "N"})
-    out = top[["pt", "signal_category", "a", "ror", "ror_ci_lower", "ror_ci_upper", "prr", "ic", "ic025", "ebgm", "eb05", "label_listed"]].copy()
+    out = top[["pt", "signal_category", "a", "ror", "ror_ci_lower", "ror_ci_upper", "ic", "ic025", "label_listed"]].copy()
     out.columns = ["PT", "Signal category", "a (n cases)", "ROR", "ROR 95% CI lower", "ROR 95% CI upper",
-                   "PRR", "IC", "IC025", "EBGM", "EB05", "Label-listed (Y/N)"]
+                   "IC", "IC025", "Label-listed (Y/N)"]
     return out.round(3)
 
 
 # ============================================================================
-# T3: top signals by strength across all four algorithms
+# T3: primary ROR+IC signals
 # ============================================================================
 
 def build_table3(signals_significant: pd.DataFrame) -> pd.DataFrame:
@@ -192,10 +194,10 @@ def build_table3(signals_significant: pd.DataFrame) -> pd.DataFrame:
     out = signals_significant.assign(_cat=category_order).sort_values(
         ["_cat", "ror"], ascending=[True, False]
     ).copy()
-    out = out[["pt", "signal_category", "a", "ror", "ror_ci_lower", "ror_ci_upper", "prr", "chi2",
-               "ic", "ic025", "ebgm", "eb05", "strict_signal"]].copy()
+    out = out[["pt", "signal_category", "a", "ror", "ror_ci_lower", "ror_ci_upper",
+               "ic", "ic025"]].copy()
     out.columns = ["PT", "Signal category", "a (n cases)", "ROR", "ROR 95% CI lower", "ROR 95% CI upper",
-                   "PRR", "chi2 (Yates)", "IC", "IC025", "EBGM", "EB05", "Strict signal (+EB05>2)"]
+                   "IC", "IC025"]
     return out.round(3)
 
 
@@ -265,7 +267,7 @@ def figure1_soc_bar(soc_rollup: pd.DataFrame):
             "see docs/environment.md). All PTs fall into a single Unmapped bucket.",
             transform=ax.transAxes, ha="center", va="center", fontsize=9, color="white",
         )
-    caption = f"F1. {WINDOW_NOTE}. SOC rollup of the 8 consensus-signal PTs from scripts/05."
+    caption = f"F1. {WINDOW_NOTE}. SOC rollup of the 8 primary consensus-signal PTs from scripts/05."
     savefig(fig, "F1_soc_signal_counts", caption)
 
 
@@ -344,8 +346,8 @@ def figure3_forest(signals_significant: pd.DataFrame):
     ax.set_title("F3. Forest plot of consensus signals, grouped by category", fontsize=11, loc="left")
     ax.legend(frameon=False, fontsize=8, loc="lower right")
     ax.spines[["top", "right"]].set_visible(False)
-    caption = (f"F3. {WINDOW_NOTE}. All 8 PTs meeting the consensus signal rule (ROR CI-lower>1 AND "
-               "Evans PRR/chi2 AND IC025>0), grouped by whether the PT is a clinical adverse event "
+    caption = (f"F3. {WINDOW_NOTE}. All 8 PTs meeting the primary signal rule (a>=3, ROR CI-lower>1 "
+               "AND IC025>0), grouped by whether the PT is a clinical adverse event "
                "or a FAERS administrative/case-context code (see Discussion) -- not one ROR-ranked list.")
     savefig(fig, "F3_forest_consensus", caption)
 
@@ -432,6 +434,112 @@ def figure5_subgroup_heatmap(signals_significant: pd.DataFrame):
     savefig(fig, "F5_subgroup_heatmap", caption, bottom=0.48)
 
 
+def figure6_reporting_trend():
+    cases = pd.read_csv(PROCESSED_DIR / "analysis_cases.csv", dtype=str)
+    order = ["2025q1", "2025q2", "2025q3", "2025q4", "2026q1"]
+    counts = cases["quarter"].value_counts().reindex(order, fill_value=0)
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    bars = ax.bar([q.upper() for q in order], counts.values, color=COLOR_SERIES1_BLUE, width=0.58)
+    for bar, value in zip(bars, counts.values):
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 2, str(int(value)),
+                ha="center", va="bottom", fontsize=8)
+    ax.set_ylabel("Deduplicated Primary-Suspect reports")
+    ax.set_title("F6. Quarterly Dato-DXd reporting trend", fontsize=11, loc="left")
+    ax.spines[["top", "right"]].set_visible(False)
+    caption = (f"F6. {WINDOW_NOTE}. Descriptive reporting-intensity screen for early-market Weber/"
+               "notoriety effects. Counts are spontaneous reports, not exposed patients or incidence; "
+               "2025Q1 begins after the 2025-01-17 US approval and is a partial post-approval quarter.")
+    savefig(fig, "F6_quarterly_reporting_trend", caption)
+
+
+def _small_multiple_forest(data: pd.DataFrame, pts: list[str], row_order: list[str],
+                           row_labels: dict[str, str], title: str, name: str, caption: str):
+    fig, axes = plt.subplots(2, 2, figsize=(12, 7.5))
+    fig.subplots_adjust(wspace=0.48, hspace=0.38)
+    axes = axes.ravel()
+    for ax, pt in zip(axes, pts):
+        panel = data[data["pt"].eq(pt)].set_index("row_key").reindex(row_order).dropna(subset=["ror"])
+        y = np.arange(len(panel))[::-1]
+        for pos, (_, row) in zip(y, panel.iterrows()):
+            color = COLOR_SERIES6_RED if bool(row["consensus_signal"]) else COLOR_MUTED
+            ax.errorbar(
+                row["ror"], pos,
+                xerr=[[row["ror"] - row["ror_ci_lower"]], [row["ror_ci_upper"] - row["ror"]]],
+                fmt="o", color=color, ecolor=color, elinewidth=1.0, capsize=2.5, markersize=5,
+            )
+            ax.text(0.98, pos,
+                    f"{row['ror']:.2f}\n({row['ror_ci_lower']:.2f}-{row['ror_ci_upper']:.2f})",
+                    va="center", ha="right", fontsize=6.2, linespacing=0.9,
+                    color=COLOR_TEXT_SECONDARY,
+                    transform=ax.get_yaxis_transform(),
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.72, "pad": 0.6})
+        ax.axvline(1, color=COLOR_MUTED, linewidth=0.8, linestyle="--")
+        ax.set_xscale("log")
+        ax.xaxis.set_major_locator(LogLocator(base=10, numticks=6))
+        ax.xaxis.set_minor_formatter(NullFormatter())
+        if len(panel):
+            low = max(panel["ror_ci_lower"].min() / 1.8, 0.01)
+            high = panel["ror_ci_upper"].max() * 1.4
+            ax.set_xlim(low, high)
+        ax.set_yticks(y)
+        ax.set_yticklabels([row_labels[key] for key in panel.index], fontsize=7.5)
+        ax.set_title(pt, fontsize=9.5, loc="left")
+        ax.set_xlabel("ROR (log scale, 95% CI)", fontsize=7.5)
+        ax.tick_params(axis="x", labelsize=7)
+        ax.spines[["top", "right"]].set_visible(False)
+    fig.suptitle(title, fontsize=12, x=0.06, ha="left")
+    savefig(fig, name, caption, bottom=0.14)
+
+
+def figure7_forest_by_comparator():
+    comparators = [
+        "full_faers_excluding_all_dato", "trial_aligned_chemo",
+        "trastuzumab_deruxtecan_alone", "sacituzumab_govitecan_alone",
+    ]
+    labels = {
+        "full_faers_excluding_all_dato": "Full FAERS",
+        "trial_aligned_chemo": "Trial-aligned chemo",
+        "trastuzumab_deruxtecan_alone": "T-DXd alone",
+        "sacituzumab_govitecan_alone": "SG alone",
+    }
+    pts = ["Interstitial lung disease", "Stomatitis", "Dry eye", "Infusion related reaction"]
+    data = pd.read_csv(TABLES_DIR / "faers_signals_comparator_all.csv")
+    data = data[data["comparator"].isin(comparators) & data["pt"].isin(pts)].copy()
+    data["row_key"] = data["comparator"]
+    caption = (f"F7. N={N_COMPARATOR_TARGET} HR+/HER2-negative-compatible Dato-DXd cases, FAERS "
+               f"{DATA_WINDOW}. Red points meet the primary ROR+IC rule (a>=3, ROR CI-lower>1, "
+               "IC025>0); gray points do not. Comparator Ns: full FAERS=1,809,719; trial-aligned "
+               "chemotherapy=940; T-DXd=1,630; SG=348.")
+    _small_multiple_forest(data, pts, comparators, labels,
+                           "F7. Clinical events across primary comparator tiers",
+                           "F7_forest_by_comparator", caption)
+
+
+def figure8_forest_leave_one_out():
+    base = pd.read_csv(TABLES_DIR / "faers_signals_trial_aligned_chemo.csv")
+    loo = pd.read_csv(TABLES_DIR / "faers_signals_leave_one_out.csv")
+    pts = list(loo["pt"].drop_duplicates())
+    row_order = ["full_pool", "capecitabine", "eribulin", "gemcitabine", "vinorelbine"]
+    labels = {
+        "full_pool": "Full 4-drug pool",
+        "capecitabine": "Drop capecitabine",
+        "eribulin": "Drop eribulin",
+        "gemcitabine": "Drop gemcitabine",
+        "vinorelbine": "Drop vinorelbine",
+    }
+    base = base[base["pt"].isin(pts)].copy()
+    base["row_key"] = "full_pool"
+    loo["row_key"] = loo["drug_dropped"]
+    data = pd.concat([base, loo], ignore_index=True, sort=False)
+    caption = (f"F8. N={N_COMPARATOR_TARGET} HR+/HER2-negative-compatible Dato-DXd cases, FAERS "
+               f"{DATA_WINDOW}. Panels are PTs meeting the primary ROR+IC rule in the full four-drug "
+               "trial-aligned pool (N=940). Red points retain the rule after the named drug is removed; "
+               "gray points do not. Exact comparator Ns are in faers_signals_leave_one_out.csv.")
+    _small_multiple_forest(data, pts, row_order, labels,
+                           "F8. Trial-aligned comparator leave-one-drug-out analysis",
+                           "F8_forest_leave_one_out", caption)
+
+
 # ============================================================================
 # Main
 # ============================================================================
@@ -462,7 +570,7 @@ def main():
 
     t3 = build_table3(signals_significant)
     save_table("T3_top_signals_by_strength",
-               f"Table 3. Consensus signals by category (Clinical AE, then Administrative/case-context), "
+               f"Table 3. Primary ROR+IC signals by category (Clinical AE, then Administrative/case-context), "
                f"ranked by ROR within each ({WINDOW_NOTE})", t3, wb)
 
     t4 = build_table4(soc_rollup)
@@ -481,6 +589,9 @@ def main():
     figure3_forest(signals_significant)
     figure4_tto_histogram()
     figure5_subgroup_heatmap(signals_significant)
+    figure6_reporting_trend()
+    figure7_forest_by_comparator()
+    figure8_forest_leave_one_out()
 
     print("\nAll tables and figures written.")
 

@@ -76,9 +76,9 @@ crosswalk available) -- `case_pt.csv`'s `soc` column is null; see
 `scripts/05_disproportionality.py` computes ROR, PRR/chi-square, BCPNN IC, and
 MGPS-style EBGM per PT against a whole-database background (all drugs, no role
 restriction; N_total = 1,810,135 deduped non-deleted cases, 2025Q1-2026Q1).
-**Consensus signal** = ROR CI-lower>1 (a>=3) AND Evans PRR/chi2 (a>=3) AND IC025>0;
-EB05>2 is reported as a separate, stricter tier (`strict_signal`), not part of base
-consensus. All thresholds are configurable at the top of the script.
+This entry's original three-part consensus and `strict_signal` terminology was
+superseded on 2026-07-17 (see the later decision). All thresholds remain
+configurable at the top of the script.
 
 Both BCPNN and MGPS are **documented approximations**, not the full published
 methods: BCPNN uses a Poisson-normal delta-method approximation to IC/IC025 (not the
@@ -262,3 +262,24 @@ attenuated against breast-cancer active comparators; after ADC exclusion, ROR ro
 without clearing the conservative Bayesian thresholds. Present this as evidence of
 comparator/indication/class sensitivity, not as proof of a geographic difference or
 absence of clinical ILD risk.
+
+### 2026-07-17 — Primary signal rule and comparator hierarchy revision
+
+- The project-wide primary signal is now ROR lower 95% CI >1 with `a >= 3` AND
+  IC025 >0. PRR/Yates chi-square and the approximate EBGM/EB05 remain computed
+  as a four-algorithm sensitivity result. ROR and PRR are correlated functions
+  of the same 2x2 table, and the local single-component EBGM is not equivalent
+  to a validated production MGPS implementation; neither should create a third
+  or fourth nominally independent vote in the primary definition.
+- The primary FAERS comparator hierarchy is full FAERS, a trial-aligned pool of
+  capecitabine/eribulin/vinorelbine/gemcitabine, and separate T-DXd and SG
+  analyses. Do not pool T-DXd and SG as a primary ADC comparator: their clinical
+  settings, targets, payloads, market histories, and event profiles differ, and
+  pooling can hide event-specific masking.
+- The former nine-drug pool and expanded chemotherapy pool are supplemental.
+  The nine-drug pool after ADC exclusion is identical to expanded chemotherapy
+  and must not be presented as an independent tier.
+- Leave-one-drug-out analysis is required for PTs positive against the base
+  trial-aligned pool. It is implemented in `scripts/08_faers_comparator.py` and
+  closes the corresponding open item in `docs/bias_inventory.md`. In the current
+  data, only the low-count administrative term Prescribed underdose is unstable.

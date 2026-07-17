@@ -1,9 +1,9 @@
-PT,Signal category,a (n cases),ROR,ROR 95% CI lower,ROR 95% CI upper,PRR,chi2 (Yates),IC,IC025,EBGM,EB05,Strict signal (+EB05>2)
-Stomatitis,Clinical AE,64,59.115,45.234,77.257,50.175,3010.178,5.171,3.029,49.195,39.85,True
-Interstitial lung disease,Clinical AE,16,15.2,9.214,25.073,14.654,189.984,3.371,1.026,14.176,9.184,True
-Dry eye,Clinical AE,13,7.627,4.388,13.256,7.42,66.097,2.582,0.548,7.148,4.4,True
-Infusion related reaction,Clinical AE,14,7.338,4.305,12.508,7.125,67.926,2.555,0.608,6.882,4.318,True
-Disease progression,Administrative/case-context,86,44.123,34.776,55.983,35.208,2818.256,4.868,3.197,34.725,28.974,True
-Prescribed underdose,Administrative/case-context,9,19.292,9.952,37.397,18.896,134.736,3.28,0.277,17.821,9.857,True
-No adverse event,Administrative/case-context,42,10.231,7.434,14.079,9.299,305.498,3.08,1.746,9.178,7.065,True
-Off label use,Administrative/case-context,66,2.559,1.967,3.328,2.311,51.292,1.194,0.565,2.295,1.865,False
+PT,Signal category,a (n cases),ROR,ROR 95% CI lower,ROR 95% CI upper,IC,IC025
+Stomatitis,Clinical AE,64,59.115,45.234,77.257,5.171,3.029
+Interstitial lung disease,Clinical AE,16,15.2,9.214,25.073,3.371,1.026
+Dry eye,Clinical AE,13,7.627,4.388,13.256,2.582,0.548
+Infusion related reaction,Clinical AE,14,7.338,4.305,12.508,2.555,0.608
+Disease progression,Administrative/case-context,86,44.123,34.776,55.983,4.868,3.197
+Prescribed underdose,Administrative/case-context,9,19.292,9.952,37.397,3.28,0.277
+No adverse event,Administrative/case-context,42,10.231,7.434,14.079,3.08,1.746
+Off label use,Administrative/case-context,66,2.559,1.967,3.328,1.194,0.565

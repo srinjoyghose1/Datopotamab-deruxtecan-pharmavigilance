@@ -1,16 +1,17 @@
-"""FAERS comparator sensitivity analyses for the breast-cancer Dato-DXd cohort.
+"""FAERS comparator hierarchy for the breast-cancer Dato-DXd cohort.
 
-Mirrors scripts/07_jader_comparator.py with three comparators over the same
-2025Q1-2026Q1 window:
-
-1. all deduplicated FAERS reports, excluding every Dato-DXd report;
-2. breast-cancer reports with a prespecified active comparator as Primary Suspect;
-3. (2), excluding reports with sacituzumab govitecan or trastuzumab deruxtecan
-   as a Primary Suspect.
+Primary tiers over 2025Q1-2026Q1 are the full FAERS background, the four
+TROPION-Breast01 trial-aligned chemotherapies, trastuzumab deruxtecan alone, and
+sacituzumab govitecan alone. Supplemental tiers retain the expanded chemotherapy
+and legacy pooled active-comparator designs. Leave-one-drug-out analyses test the
+stability of primary trial-aligned signals.
 
 Indications are linked to the relevant drug through PRIMARYID + DRUG_SEQ. Thus a
 breast-cancer indication belonging to a concomitant medication cannot qualify a
-case. Breast cancer includes all explicitly reported subtypes, including TNBC.
+case. To approximate the HR-positive/HER2-negative population without discarding
+reports whose receptor status is simply missing, explicitly discordant TNBC,
+HER2-positive, and hormone-receptor-negative indications are excluded at case
+level; nonspecific breast-cancer indications remain eligible.
 """
 
 from __future__ import annotations
@@ -43,7 +44,19 @@ ACTIVE_COMPARATORS = {
     "sacituzumab_govitecan": ["sacituzumab govitecan", "trodelvy"],
     "trastuzumab_deruxtecan": ["trastuzumab deruxtecan", "enhertu"],
 }
+TRIAL_ALIGNED_DRUGS = ("capecitabine", "eribulin", "gemcitabine", "vinorelbine")
+EXPANDED_CHEMO_DRUGS = TRIAL_ALIGNED_DRUGS + ("paclitaxel", "nab_paclitaxel", "carboplatin")
 EXCLUDED_ADC_COMPARATORS = {"sacituzumab_govitecan", "trastuzumab_deruxtecan"}
+DISCORDANT_INDICATION_TERMS = (
+    "triple negative",
+    "triple-negative",
+    "her2 positive",
+    "her2-positive",
+    "hormone receptor negative",
+    "hormone receptor-negative",
+    "hr negative",
+    "hr-negative",
+)
 
 
 def find_table_file(quarter: str, table: str) -> Path:
@@ -87,8 +100,20 @@ def name_mask(frame: pd.DataFrame, terms: list[str]) -> pd.Series:
     return mask
 
 
+def eligible_breast_ids(frame: pd.DataFrame) -> set[str]:
+    """Return breast-cancer report IDs after case-level subtype exclusions."""
+    indication = frame["indi_pt"].fillna("").str.casefold()
+    breast = indication.str.contains("breast", regex=False)
+    breast_ids = set(frame.loc[breast, "primaryid"])
+    discordant = pd.Series(False, index=frame.index)
+    for term in DISCORDANT_INDICATION_TERMS:
+        discordant |= indication.str.contains(term, regex=False)
+    discordant_ids = set(frame.loc[breast & discordant, "primaryid"])
+    return breast_ids - discordant_ids
+
+
 def target_breast_keys() -> tuple[set[str], set[str]]:
-    """Return explicitly breast-cancer Dato cases and every Dato case."""
+    """Return HR+/HER2- compatible breast-cancer Dato cases and all Dato cases."""
     cases = pd.read_csv(PROCESSED_DIR / "analysis_cases.csv", dtype=str)
     all_dato = set(cases["primaryid"])
     drug = pd.read_csv(RAW_FAERS_DIR / "drug.csv", dtype=str)
@@ -97,13 +122,12 @@ def target_breast_keys() -> tuple[set[str], set[str]]:
         indi, left_on=["primaryid", "drug_seq"],
         right_on=["primaryid", "indi_drug_seq"], how="inner",
     )
-    breast = links["indi_pt"].fillna("").str.contains("breast", case=False, regex=False)
-    return set(links.loc[breast, "primaryid"]) & all_dato, all_dato
+    return eligible_breast_ids(links) & all_dato, all_dato
 
 
-def active_comparator_keys(kept_primaryids: set[str]) -> tuple[set[str], set[str]]:
-    active: set[str] = set()
-    excluded_adc: set[str] = set()
+def comparator_keys_by_drug(kept_primaryids: set[str]) -> dict[str, set[str]]:
+    """Build indication-compatible PS report sets for every comparator drug."""
+    keys_by_drug = {label: set() for label in ACTIVE_COMPARATORS}
     for quarter in QUARTERS:
         drug = pd.read_csv(
             find_table_file(quarter, "DRUG"), delimiter="$",
@@ -112,31 +136,29 @@ def active_comparator_keys(kept_primaryids: set[str]) -> tuple[set[str], set[str
         )
         drug.columns = [column.strip().lower() for column in drug.columns]
         drug = drug[drug["primaryid"].isin(kept_primaryids) & drug["role_cod"].eq("PS")].copy()
-        matched_frames = []
-        for label, terms in ACTIVE_COMPARATORS.items():
-            matched = drug[name_mask(drug, terms)].copy()
-            if matched.empty:
-                continue
-            matched["comparator"] = label
-            matched_frames.append(matched)
-        if not matched_frames:
-            continue
-        candidates = pd.concat(matched_frames, ignore_index=True)
-
         indi = pd.read_csv(
             find_table_file(quarter, "INDI"), delimiter="$",
             usecols=["primaryid", "indi_drug_seq", "indi_pt"],
             dtype=str, low_memory=False, encoding="latin1",
         )
         indi.columns = [column.strip().lower() for column in indi.columns]
-        linked = candidates.merge(
-            indi, left_on=["primaryid", "drug_seq"],
-            right_on=["primaryid", "indi_drug_seq"], how="inner",
-        )
-        linked = linked[linked["indi_pt"].fillna("").str.contains("breast", case=False, regex=False)]
-        active.update(linked["primaryid"])
-        excluded_adc.update(linked.loc[linked["comparator"].isin(EXCLUDED_ADC_COMPARATORS), "primaryid"])
-    return active, excluded_adc
+        for label, terms in ACTIVE_COMPARATORS.items():
+            matched = drug[name_mask(drug, terms)]
+            if matched.empty:
+                continue
+            linked = matched.merge(
+                indi, left_on=["primaryid", "drug_seq"],
+                right_on=["primaryid", "indi_drug_seq"], how="inner",
+            )
+            keys_by_drug[label].update(eligible_breast_ids(linked))
+    return keys_by_drug
+
+
+def union_sets(keys_by_drug: dict[str, set[str]], labels) -> set[str]:
+    result: set[str] = set()
+    for label in labels:
+        result.update(keys_by_drug[label])
+    return result
 
 
 def reaction_counts(case_sets: dict[str, set[str]]) -> dict[str, Counter]:
@@ -213,7 +235,10 @@ def calculate_signals(target: Counter, comparator: Counter, n_target: int, n_com
     out["prr_signal"] = (out.a_dato_cases >= 3) & (out.prr >= 2) & (out.chi2_yates >= 4)
     out["bcpnn_signal"] = (out.a_dato_cases >= 3) & (out.ic025 > 0)
     out["mgps_signal"] = (out.a_dato_cases >= 3) & (out.eb05 >= 2)
-    out["consensus_signal"] = out[["ror_signal", "prr_signal", "bcpnn_signal"]].all(axis=1)
+    out["consensus_signal"] = out[["ror_signal", "bcpnn_signal"]].all(axis=1)
+    out["four_algorithm_signal"] = out[
+        ["ror_signal", "prr_signal", "bcpnn_signal", "mgps_signal"]
+    ].all(axis=1)
     return out.sort_values(["consensus_signal", "ror", "a_dato_cases"], ascending=[False, False, False])
 
 
@@ -221,12 +246,23 @@ def main() -> None:
     background = background_case_universe()
     kept = set(background["primaryid"])
     target, all_dato = target_breast_keys()
-    active, excluded_adc = active_comparator_keys(kept)
-    active -= all_dato
-    class_excluded = active - excluded_adc
+    keys_by_drug = comparator_keys_by_drug(kept)
+    keys_by_drug = {label: keys - all_dato for label, keys in keys_by_drug.items()}
+    trial_aligned = union_sets(keys_by_drug, TRIAL_ALIGNED_DRUGS)
+    expanded_chemo = union_sets(keys_by_drug, EXPANDED_CHEMO_DRUGS)
+    tdxd_alone = keys_by_drug["trastuzumab_deruxtecan"]
+    sg_alone = keys_by_drug["sacituzumab_govitecan"]
+    active = union_sets(keys_by_drug, ACTIVE_COMPARATORS)
+    class_excluded = union_sets(
+        keys_by_drug, [label for label in ACTIVE_COMPARATORS if label not in EXCLUDED_ADC_COMPARATORS]
+    )
     sets = {
-        "dato_breast_all_subtypes": target,
+        "dato_breast_hr_compatible": target,
         "full_faers_excluding_all_dato": kept - all_dato,
+        "trial_aligned_chemo": trial_aligned,
+        "trastuzumab_deruxtecan_alone": tdxd_alone,
+        "sacituzumab_govitecan_alone": sg_alone,
+        "expanded_chemo": expanded_chemo,
         "active_breast_comparator": active,
         "active_breast_comparator_class_exclusion": class_excluded,
     }
@@ -236,11 +272,45 @@ def main() -> None:
     summary = pd.DataFrame([{"cohort": name, "n_cases": len(keys)} for name, keys in sets.items()])
     summary.to_csv(TABLES_DIR / "faers_comparator_cohort_sizes.csv", index=False)
     outputs = []
+    results_by_name = {}
     for name in list(sets)[1:]:
-        result = calculate_signals(counts["dato_breast_all_subtypes"], counts[name], len(target), len(sets[name]), name)
+        result = calculate_signals(counts["dato_breast_hr_compatible"], counts[name], len(target), len(sets[name]), name)
         result.to_csv(TABLES_DIR / f"faers_signals_{name}.csv", index=False)
         outputs.append(result)
+        results_by_name[name] = result
     pd.concat(outputs, ignore_index=True).to_csv(TABLES_DIR / "faers_signals_comparator_all.csv", index=False)
+
+    trial_signal_pts = set(
+        results_by_name["trial_aligned_chemo"].loc[
+            results_by_name["trial_aligned_chemo"]["consensus_signal"], "pt"
+        ]
+    )
+    loo_id_sets = {
+        drug_dropped: union_sets(
+            keys_by_drug, [drug for drug in TRIAL_ALIGNED_DRUGS if drug != drug_dropped]
+        )
+        for drug_dropped in TRIAL_ALIGNED_DRUGS
+    }
+    loo_counts = reaction_counts(loo_id_sets)
+    loo_rows = []
+    for drug_dropped in TRIAL_ALIGNED_DRUGS:
+        comparator_ids = loo_id_sets[drug_dropped]
+        loo = calculate_signals(
+            counts["dato_breast_hr_compatible"], loo_counts[drug_dropped],
+            len(target), len(comparator_ids), f"trial_aligned_drop_{drug_dropped}",
+        )
+        loo = loo[loo["pt"].isin(trial_signal_pts)].copy()
+        loo["drug_dropped"] = drug_dropped
+        loo = loo.rename(columns={"n_comparator": "comparator_n"})
+        loo_rows.append(loo[[
+            "pt", "drug_dropped", "a_dato_cases", "ror", "ror_ci_lower",
+            "ror_ci_upper", "ic025", "comparator_n", "consensus_signal",
+        ]])
+    leave_one_out = pd.concat(loo_rows, ignore_index=True) if loo_rows else pd.DataFrame(columns=[
+        "pt", "drug_dropped", "a_dato_cases", "ror", "ror_ci_lower",
+        "ror_ci_upper", "ic025", "comparator_n", "consensus_signal",
+    ])
+    leave_one_out.to_csv(TABLES_DIR / "faers_signals_leave_one_out.csv", index=False)
 
     print(summary.to_string(index=False))
     for result in outputs:
